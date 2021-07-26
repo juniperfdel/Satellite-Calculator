@@ -220,6 +220,10 @@ nDays = 120
 # timezone output
 localTZ = timezone('America/Phoenix')
 
+#If for some reason you want to specifically 
+#calculate for the positions of CALIPSO around
+#culmination
+solveForSatPos = False
 # -----------------------
 
 #Useful Globals
@@ -237,6 +241,8 @@ moon = planets['moon']
 todayUTC = timezone_converter(datetime.combine(datetime.today().date(), startTime), target_tz="UTC")
 
 for obsName, obsInfo in obsData.items():
+	finalDay = todayUTC + timedelta(days=nDays)
+	print(f"Looking for CALIPSO at {obsName} from {todayUTC} to {finalDay}")
 	lat = obsInfo[0]
 	lon = obsInfo[1]
 	elv = obsInfo[2]
@@ -244,8 +250,9 @@ for obsName, obsInfo in obsData.items():
 	obsLocation = Topos(lat, lon, elevation_m=elv)
 	earthObserver = earth + obsLocation
 	
-	
+	print("Solving for Moon Locations")
 	moonPathDict = solveForMoonPath(todayUTC, nDays, earthObserver)
+	print("Solving for Sun rises and sets")
 	sunRiseSetDict = sunRiseSetFinder(todayUTC, nDays, obsLocation)
 	
 	
@@ -260,12 +267,15 @@ for obsName, obsInfo in obsData.items():
 	calSat = None
 	for sat in activeSat:
 		if ("CALIPSO" in sat.name):
-			print(sat)
+			print("Found CALIPSO in active database!")
 			calSat = sat
+	if calSat is None:
+		print("CALIPSO was not found, please retry with reload=True or check NASA to ensure it is still active")
 	
 	culmData = []
 	cal = calipsoNode(calSat, obsLocation)
 	
+	print("Calculating CALIPSO culminations")
 	for dayNum in tqdm(range(nDays)):
 		nextDay = todayUTC + timedelta(days=dayNum)
 		ti, eev = cal.getEvents([nextDay.year, nextDay.month, nextDay.day], 30)
@@ -314,22 +324,25 @@ for obsName, obsInfo in obsData.items():
 						satData['moonDis'] = moonDis
 						satData['moonFrac'] = moonFrac
 						
-						startT = rF['culminate'].utc_datetime() - timedelta(seconds=10)
-						secA = 20
-						secI = numpy.ceil(secA).astype('int')
-						posArr = []
-						for tStep in range(0,secI,1):
-							nearFut = startT + timedelta(seconds=tStep)
-							tNearFut = ts.from_datetime(nearFut)
-							curSatLoc = difference.at(tNearFut)
-							curSatRA, curSatDec, _ = curSatLoc.radec()
-							posArr.append([nearFut, curSatRA, curSatDec])
-						satData['satTrack'] = list(posArr)
+						if solveForSatPos:
+							startT = rF['culminate'].utc_datetime() - timedelta(seconds=10)
+							secA = 20
+							secI = numpy.ceil(secA).astype('int')
+							posArr = []
+							for tStep in range(0,secI,1):
+								nearFut = startT + timedelta(seconds=tStep)
+								tNearFut = ts.from_datetime(nearFut)
+								curSatLoc = difference.at(tNearFut)
+								curSatRA, curSatDec, _ = curSatLoc.radec()
+								posArr.append([nearFut, curSatRA, curSatDec])
+							satData['satTrack'] = list(posArr)
+						
 						culmData.append(satData)
 						rF = {}
 						dd = [None, None, None]
 	
-	print(len(culmData))
+	print(f"Found CALIPSO culminating {len(culmData)} times at {obsName}, for more info open {obsName}_CALIPSO_Info.csv")
+	print("")
 	
 	tzNameAb = culmData[0]['culminate'].astimezone(localTZ).strftime('%Z')
 	head = ('Observatory Latitude', 'Observatory Longitude', 'Satellite name', 'Culmination Time (UTC)' ,f'Culmination Time ({tzNameAb})', 'Daytime at Culmination?', 'Satellite Shadow Latitude (At Culmination)' , 'Satellite Shadow Longitude (At Culmination)','Approx. Distance Between Shadow and Observatory (km)' , 'Satellite RA (At Culmination)', 'Satellite Dec (At Culmination)', 'Satellite Altitude (At Culmination)', 'Satellite Azimuth (At Culmination)', 'Duration Above 30 deg alt [minutes]', 'Is the Satellite Sunlit?', 'Moon Distance (At Culmination)', 'Moon Fraction (At Culmination)')
