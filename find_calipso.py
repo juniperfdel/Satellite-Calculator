@@ -237,7 +237,6 @@ moon = planets['moon']
 todayUTC = timezone_converter(datetime.combine(datetime.today().date(), startTime), target_tz="UTC")
 
 for obsName, obsInfo in obsData.items():
-	#lat, lon = '37.341 N', '121.642 W'  # Lick
 	lat = obsInfo[0]
 	lon = obsInfo[1]
 	elv = obsInfo[2]
