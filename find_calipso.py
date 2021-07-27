@@ -203,7 +203,7 @@ class calipsoNode:
 		
 		t0 = ts.utc(startDay)
 		t1 = ts.utc(startDay + timedelta(days=1))
-		return self.sat.find_events(veritas, t0, t1, altitude_degrees=input_alt)
+		return self.sat.find_events(self.obs, t0, t1, altitude_degrees=input_alt)
 
 #Script Inputs
 # -----------------------
