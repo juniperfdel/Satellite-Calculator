@@ -218,7 +218,8 @@ obsData = {
 # Calculate for the next n days from today
 nDays = 120
 # timezone output
-localTZ = timezone('America/Phoenix')
+localTZ = get_localzone()
+# localTZ = timezone('America/Phoenix')
 
 #If for some reason you want to specifically 
 #calculate for the positions of CALIPSO around
