@@ -27,7 +27,7 @@ def timezone_converter(input_dt, current_tz='UTC', target_tz='America/Phoenix'):
 		target_dt = current_tz.localize(input_dt).astimezone(target_tz)
 	return target_tz.normalize(target_dt)
 
-# ------- Moon rise/set functions -------
+# ------- Moon position functions -------
 
 # From https://github.com/sczesla/PyAstronomy/blob/master/src/pyasl/asl/angularDistance.py
 def twoObjectDistanceExplict(ra1,dec1,ra2,dec2):
