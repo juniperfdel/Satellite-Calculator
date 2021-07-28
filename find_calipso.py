@@ -205,6 +205,13 @@ localTZ = get_localzone()
 solveForSatPos = False
 # -----------------------
 
+if solveForSatPos:
+	try:
+		import h5py
+	except ImportError:
+		print("In order to store satillite positons please install h5py https://pypi.org/project/h5py/")
+		sys.exit(1)
+
 #Useful Globals
 startTime = datetime.min.time()
 ts = load.timescale()
@@ -220,6 +227,9 @@ moon = planets['moon']
 todayUTC = timezone_converter(datetime.combine(datetime.today().date(), startTime), target_tz="UTC")
 
 for obsName, obsInfo in obsData.items():
+	if solveForSatPos:
+		satStore = h5py.File(obsName + '.hdf5', 'w')
+
 	finalDay = todayUTC + timedelta(days=nDays)
 	print(f"Looking for CALIPSO at {obsName} from {todayUTC} to {finalDay}")
 	lat = obsInfo[0]
@@ -250,12 +260,12 @@ for obsName, obsInfo in obsData.items():
 		sys.exit(1)
 
 	culmData = []
-	cal = calipsoNode(calSat, obsLocation)
+	calipsoAtObs = calipsoNode(calSat, obsLocation)
 
 	print("Calculating CALIPSO culminations")
 	for dayNum in tqdm(range(nDays)):
 		nextDay = todayUTC + timedelta(days=dayNum)
-		ti, eev = cal.getEvents([nextDay.year, nextDay.month, nextDay.day], 30)
+		ti, eev = calipsoAtObs.getEvents([nextDay.year, nextDay.month, nextDay.day], 30)
 		if (len(eev) >= 3):
 				rF = {}
 				dd = [None, None, None]
@@ -284,10 +294,7 @@ for obsName, obsInfo in obsData.items():
 
 						sunlit = geocentric.is_sunlit(planets)
 						difference = calSat - obsLocation
-						topocentric = difference.at(rF['culminate'])
-
-						ra, dec, _ = topocentric.radec()  # ICRF ("J2000")
-						alt, az, _ = topocentric.altaz()
+						alt, az, ra, dec = calipsoAtObs.getObsCoord(rF['culminate']) # ICRF ("J2000")
 
 						satData['ra'] = ra
 						satData['dec'] = dec
@@ -302,21 +309,34 @@ for obsName, obsInfo in obsData.items():
 						satData['moonFrac'] = moonFrac
 
 						if solveForSatPos:
-							startT = rF['culminate'].utc_datetime() - timedelta(seconds=10)
-							secA = 20
-							secI = numpy.ceil(secA).astype('int')
-							posArr = []
-							for tStep in range(0,secI,1):
-								nearFut = startT + timedelta(seconds=tStep)
-								tNearFut = ts.from_datetime(nearFut)
-								curSatLoc = difference.at(tNearFut)
-								curSatRA, curSatDec, _ = curSatLoc.radec()
-								posArr.append([nearFut, curSatRA, curSatDec])
-							satData['satTrack'] = list(posArr)
+							secTotal = 20
+							secStep = 1
 
+							# If secTotal isn't an integer
+							# secTotal = numpy.ceil(secTotal).astype('int')
+							startT = rF['culminate'].utc_datetime() - timedelta(seconds=(secTotal/2))
+
+							currentSatPos = numpy.zeros((secTotal//secStep,3), dtype=numpy.float64)
+							#Cacluation step
+							iStep = 0
+							for tStep in numpy.arange(0, secTotal, secStep):
+								tStepMicro = int(numpy.floor(tStep * 1000000))
+								nearFut = startT + timedelta(microseconds=tStepMicro)
+								tNearFut = ts.from_datetime(nearFut)
+								_, _, curSatRA, curSatDec = calipsoAtObs.getObsCoord(tNearFut)
+								currentSatPos[iStep][0] = tStep
+								currentSatPos[iStep][1] = curSatRA._degrees
+								currentSatPos[iStep][2] = curSatDec._degrees
+								iStep += 1
+							#Storage step
+							datasetName = startT.isoformat()
+							satStore.create_dataset(datasetName, data=currentSatPos)
 						culmData.append(satData)
 						rF = {}
 						dd = [None, None, None]
+
+	if solveForSatPos:
+		satStore.close()
 
 	if len(culmData) > 0:
 		print(f"Found CALIPSO culminating {len(culmData)} times at {obsName}, for more info open {obsName}_CALIPSO_Info.csv")
