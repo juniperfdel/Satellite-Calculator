@@ -93,6 +93,7 @@ def disFromMoon(currentDT, currentAlt, currentAz, earthObserver):
 # the horizon the sun needs to be for the event to be considered
 # occured; the values are from
 # https://www.weather.gov/fsd/twilight
+# https://ase.tufts.edu/cosmos/view_picture.asp?id=1331
 DAYLENGTH_CENTER_HORIZON = 0.0
 DAYLENGTH_TOP_HORIZON = 0.26667
 DAYLENGTH_TOP_HORIZON_APPARENTLY = 0.8333
