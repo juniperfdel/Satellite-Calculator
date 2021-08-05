@@ -2,9 +2,11 @@ from __future__ import annotations
 
 # Standard python imports
 import sys
-import dateutil
+import os
 from datetime import datetime, timedelta, date
 import argparse
+import configparser
+import pathlib
 
 # Non-standard python imports
 import yaml
@@ -22,7 +24,8 @@ from geopy import distance
 #Skyfield imports
 from skyfield import almanac
 from skyfield.nutationlib import iau2000b
-from skyfield.api import Star, EarthSatellite, load, iers2010, N, S, E, W
+from skyfield.api import Star, EarthSatellite, Loader, iers2010, N, S, E, W
+
 
 # For typing, not enforced by python; but useful for humans
 from skyfield.units import Angle
@@ -37,11 +40,8 @@ from numpy import array as nparray
 
 from typing import Dict, List, Tuple, Sequence, Optional, Union, Callable, Any
 
-# Input Globals
-reloadSat = False
-obsData = None
-nDays = None
-localTZ = None
+#load into local directory
+load = Loader('skyfield_data')
 
 
 # Script Globals
@@ -49,10 +49,6 @@ timescale = load.timescale()
 ephemeris = load('de440s.bsp')
 earth = ephemeris['earth']
 moon = ephemeris['moon']
-
-calipso = None
-
-calipsoNs = []
 
 #Stolen from https://stackoverflow.com/questions/27531718/datetime-timezone-conversion-using-pytz
 def timezone_converter(input_dt: datetime, current_tz: Optional[str]='UTC', target_tz: Optional[str]='UTC') -> datetime:
@@ -100,6 +96,9 @@ class timeObj:
 	def isoformat(self) -> str:
 		return self.dt.isoformat()
 
+	def getfileformat(self) -> str:
+		return self.dt.strftime("%Y%m%d")
+
 # Time Globals
 utc = timezone("UTC")
 todayUTC = timeObj(datetime.now())
@@ -141,7 +140,7 @@ def daylength(ephemeris_ : SpiceKernel, topos_ : GeographicPosition, degrees_ : 
 # ------- Moon position functions -------
 
 # From https://github.com/sczesla/PyAstronomy/blob/master/src/pyasl/asl/angularDistance.py
-def twoObjectDistanceExplict(ra1: float, dec1: float, ra2: float, dec2: float) -> float:
+def twoObjectDistanceExplict(ra1: Union[float, nparray], dec1: Union[float, nparray], ra2: Union[float, nparray], dec2: Union[float, nparray]) -> Union[float, nparray]:
 	"""
 	Calculate the angular distance between two coordinates.
 
@@ -200,9 +199,13 @@ def disFromMoon(inTime: timeObj, currentAlt: float, currentAz: float, earthObser
 def nNotNones(lst) -> int:
 	return sum(x is not None for x in lst)
 
-# Helper class which stores the transit times
-class calipsoTransit:
-	def __init__(self, riseTime_: timeObj, culmTime_: timeObj, setTime_: timeObj) -> None:
+# Helper class which stores the transit times and associated information
+class satTransit:
+	def __init__(self, inAlt_: float, inSatName_: str, inObsLoc_: Tuple[float, float], riseTime_: timeObj, culmTime_: timeObj, setTime_: timeObj) -> None:
+		self.alt = inAlt_
+		self.satName = inSatName_
+		self.obsLoc = inObsLoc_
+
 		self.rise = riseTime_
 		self.culm = culmTime_
 		self.set = setTime_
@@ -213,17 +216,30 @@ class calipsoTransit:
 	def getCulmination(self) -> timeObj:
 		return self.culm
 
+	def getRise(self) -> timeObj:
+		return self.rise
+
+	def getSet(self) -> timeObj:
+		return self.set
+
+	def getAlt(self) -> float:
+		return self.alt
+
 	def addToDict(self, inDict: Dict[str, Any]) -> None:
-		inDict["culminate"] = self.getCulmination().getSkyfield()
+		inDict["culm"] = self.getCulmination().getSkyfield()
 		inDict["rise"] = self.rise.getSkyfield()
-		inDict["fall"] = self.set.getSkyfield()
+		inDict["set"] = self.set.getSkyfield()
 		inDict["dur"] = self.getDuration()
+		inDict["rise_set_alt"] = self.alt
+		inDict["sat_name"] = self.satName
+		inDict["obs_lat"] = self.obsLoc[0]
+		inDict["obs_long"] = self.obsLoc[1]
 
 
 #The calculator class which does all the heavy lifting
-class calipsoCalculator:
-	def __init__(self, satillite_: EarthSatellite, observatoryName_: str, observatory_: GeographicPosition, earthObservatory_: VectorSum) -> None:
-		self.sat = satillite_
+class satCalculator:
+	def __init__(self, satellite_: EarthSatellite, observatoryName_: str, observatory_: GeographicPosition, earthObservatory_: VectorSum) -> None:
+		self.sat = satellite_
 		self.obs = observatory_
 		self.obsName = observatoryName_
 		self.earthobs = earthObservatory_
@@ -269,7 +285,8 @@ class calipsoCalculator:
 
 		return rv
 
-	def getDayTransits(self, inDate: timeObj, input_alt: float) -> Sequence[calipsoTransit]:
+	def getDayTransits(self, inDate: timeObj, input_alt: float) -> Sequence[satTransit]:
+		obsLoc = (self.obs.latitude.degrees, self.obs.longitude.degrees)
 		inDay = inDate.getStartDay()
 		t0 = inDay.getSkyfield()
 		t1 = inDay.getOff(days=1).getSkyfield()
@@ -284,12 +301,12 @@ class calipsoCalculator:
 					eventTrack[eventIndex] = eventTime
 					if nNotNones(eventTrack) == 3:
 						eventTrack = [timeObj(x) for x in eventTrack]
-						transits.append( calipsoTransit(*eventTrack) )
+						transits.append( satTransit(input_alt, self.getSatName(), obsLoc, *eventTrack) )
 						eventTrack = [None, None, None]
 
 				if nNotNones(eventTrack) > 0:
 					eventTrack = [timeObj(x) if type(x) is Time else None for x in eventTrack]
-					transits.append(calipsoTransit(*eventTrack))
+					transits.append( satTransit(input_alt, self.getSatName(), obsLoc, *eventTrack) )
 
 		return transits
 
@@ -321,7 +338,7 @@ class calipsoCalculator:
 		greatCDist = distance.distance(satLoc,verLoc)
 		return (satLoc, verLoc, greatCDist.km)
 
-	def getSatilliteDataAt(self, inTime: timeObj) -> dict[str, Any]:
+	def getSatilliteDataAt(self, inTime: timeObj) -> Dict[str, Any]:
 		geocentric = self.sat.at(inTime.getSkyfield())
 
 		retData = {}
@@ -344,88 +361,8 @@ class calipsoCalculator:
 
 
 
-def turnToCSV(inFileName: str, inData:  Dict[str, Any]) -> None:
-	global localTZ
-	localAbbr = datetime.now().astimezone(localTZ).strftime('%Z')
-	csvRowDefs = [
-		("Observatory Latitude", lambda x: x["obs_lat"]),
-		("Observatory Longitude", lambda x: x["obs_long"]),
-		("Satellite name", lambda x: x["name"]),
-		("Culmination Time (UTC)", lambda x: x["culminate"].astimezone(utc).strftime('%Y %b %d %H:%M:%S')),
-		(f"Culmination Time ({localAbbr})", lambda x: x["culminate"].astimezone(localTZ).strftime('%Y %b %d %H:%M:%S')),
-		("Daytime at Culmination?", lambda x: 'Y' if x['is_day'] else 'N'),
-		("Satellite Shadow Latitude (At Culmination)", lambda x: x["lat"]),
-		("Satellite Shadow Longitude (At Culmination)", lambda x: x["long"]),
-		("Approx. Distance Between Shadow and Observatory (km)", lambda x: x["approx_dis"]),
-		("Satellite RA (At Culmination)", lambda x: x["ra"]),
-		("Satellite Dec (At Culmination)", lambda x: x["dec"]),
-		("Satellite Altitude (At Culmination)", lambda x: x["alt"]),
-		("Satellite Azimuth (At Culmination)", lambda x: x["az"]),
-		("Duration Above 30 deg alt [minutes]", lambda x: around(x['dur'],2)),
-		("Is the Satellite Sunlit?", lambda x: 'Y' if x['sun'] else 'N'),
-		("Moon Distance (At Culmination)", lambda x: around(x['moon_dis'],2)),
-		("Moon Fraction (At Culmination)", lambda x: around(x['moon_frac'],3))
-	]
-
-	csvHead = ",".join([x[0] for x in csvRowDefs]) + "\n"
-	csvTransforms = [x[1] for x in csvRowDefs]
-	with open(inFileName,"w") as fp:
-		fp.write(csvHead)
-		for data in inData:
-			rowS = ",".join([str(csvTrans(data)) for csvTrans in csvTransforms]) + "\n"
-			fp.write(rowS)
-
-
-def main(calipsoNs: Sequence[calipsoCalculator], nDays: int, solveForSatPos: Union[Sequence[float], None]) -> None:
+def buildSatList(reloadSat: bool) -> List[EarthSatellite]:
 	global todayUTC
-
-	finalDay = todayUTC.getOff(days=nDays)
-
-	print("Calculating CALIPSO culminations")
-
-	for calipsoCalc in calipsoNs:
-		print(f"Looking for CALIPSO at {calipsoCalc.getObsName()} from {todayUTC} to {finalDay}")
-
-		if solveForSatPos is not None:
-			satStore = h5py.File(calipsoCalc.getObsName() + '.hdf5', 'w')
-
-		culmData = []
-		for dayNum in tqdm(range(nDays)):
-
-			nextDay = todayUTC.getOff(days=dayNum)
-			dayTransits = calipsoCalc.getDayTransits(nextDay, 30.)
-
-			for dayTransit in dayTransits:
-
-					culmination = dayTransit.getCulmination()
-					satData = calipsoCalc.getSatilliteDataAt(culmination)
-					dayTransit.addToDict(satData)
-					culmData.append(satData)
-
-					if solveForSatPos is not None:
-							microsecondsBefore = solveForSatPos[0] * -1000000
-							secondsDur = solveForSatPos[1]
-							secondsStep = solveForSatPos[2]
-
-							startT = culmination.getOff(microseconds=microsecondsBefore)
-							storePos = calipsoCalc.getObsCoordBetween(startT, secondsDur, secondsStep, bool(int(solveForSatPos[3])))
-
-							#Storage step
-							datasetName = startT.isoformat()
-							satStore.create_dataset(datasetName, data=storePos)
-
-		if len(culmData) > 0:
-			print(f"Found CALIPSO culminating {len(culmData)} times at {calipsoCalc.getObsName()}, for more info open {calipsoCalc.getObsName()}.csv")
-			print("")
-			turnToCSV(calipsoCalc.getObsName() + ".csv", culmData)
-		else:
-			print(f"Did not find CALIPSO culminating at {obsName} from {todayUTC} to {finalDay}")
-
-		if solveForSatPos:
-			satStore.close()
-
-def buildSatGlobals(reloadSat: bool) -> None:
-	global calipso, todayUTC
 	satURL = "https://celestrak.com/NORAD/elements/active.txt"
 	satellites = None
 	if reloadSat:
@@ -433,55 +370,35 @@ def buildSatGlobals(reloadSat: bool) -> None:
 	else:
 		satellites = load.tle_file(satURL)
 
+	with open("config/sat_list.txt", "r") as fp:
+		satNames = [x.strip() for x in fp.readlines()]
+
+	satelliteArray = []
 	for sat in satellites:
 		days = todayUTC.getSkyfield() - sat.epoch
-		if (days < 14) and ("CALIPSO" in sat.name):
-			calipso = sat
-			break
+		if (days < 14) and (0 < sum([bool(satname in sat.name) for satname in satNames])):
+			satelliteArray.append(sat)
 
-	if calipso is None:
-		print("CALIPSO was not found, please retry with --reload or check NASA to ensure it is still active")
+	if len(satelliteArray) == 0:
+		print("No inputted satellite from config/sat_list.txt was not found, please retry with --reload or check to ensure each are still active")
 		sys.exit(1)
 
+	return satelliteArray
 
 
-if __name__ == "__main__":
-	parser = argparse.ArgumentParser(description='Calculate CALIPSO culminations for observatorys found in obs_data.yaml')
-	parser.add_argument('days', type=int, nargs='?', default=120, help='The number of days to calculate for, default of 120 days')
-	parser.add_argument('-tz','--set-timezone', type=str, help="The timezone to cacluate with respect to, default is your local timezone")
-	parser.add_argument('-r','--reload', action='store_true', help="Re-download the TLE file from the internet, default is false")
-	parser.add_argument('-s','--solve', nargs=4, type=float, help="Solve for the satillite positions around culmination, Format: <start time in seconds before culmination> <duration in seconds> <timestep in seconds> <alt/az flag>. If <alt/az flag> is set to 1, then alt/az data will be added. Setting any other number will prevent this.")
+def buildSatCalcs(reloadSat_: bool) -> List[satCalculator]:
+	satelliteArray = buildSatList(reloadSat_)
 
-	args = parser.parse_args()
-	print(args)
+	satCalculators = []
 
-	nDays = args.days
-	reloadSat = args.reload
-
-	inputTZ = getattr(args,"set_timezone", None)
-	if inputTZ is None:
-		localTZ = get_localzone()
-	else:
-		localTZ = timezone(inputTZ)
-
-	solveForSatPos = getattr(args,"solve", None)
-
-	if solveForSatPos is not None:
-		try:
-			import h5py
-		except ImportError as err:
-			print("In order to store satillite positons please install h5py https://pypi.org/project/h5py/\n\n")
-			raise err
-
-
-	buildSatGlobals(reloadSat)
-
-	with open("obs_data.yaml","r") as fp:
+	with open("config/obs_data.yaml","r") as fp:
 		obsData = yaml.load(fp, Loader=yaml.SafeLoader)
+
 
 	for obsName, obsArr in obsData.items():
 		observatory = iers2010.latlon(*obsArr)
 		earthObservatory = earth + observatory
-		calipsoNs.append(calipsoCalculator(calipso, obsName, observatory, earthObservatory))
+		for satObject in satelliteArray:
+			satCalculators.append(satCalculator(satObject, obsName, observatory, earthObservatory))
 
-	main(calipsoNs, nDays, solveForSatPos)
+	return satCalculators
