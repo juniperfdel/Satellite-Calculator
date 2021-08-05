@@ -62,7 +62,7 @@ Here is the list of non-positional arguments:
 These scripts uses features from the `typing` module which was introduced in python 3.7, so that is the minimum python version required to run this script.
 
 ## HDF5 Note
-If you calculate the positions of the satellite and place them inside an HDF5 file as individual tables, one for each culmination or day (depending on the script). Each table is referenced by a key which is the time of the first element in [ISO-8601 format](https://en.wikipedia.org/wiki/ISO_8601) The [wikipedia page for HDF5](https://en.wikipedia.org/wiki/Hierarchical_Data_Format) has a list of languages which have HDF5 parsers for them already written.
+If any script calculates the positions of a satellite, it will place those positions inside an individual table in an HDF5 file. Each table corresponds to a culmination or day (depending on the script). Each table is referenced by a key which is the time of the first element in [ISO-8601 format](https://en.wikipedia.org/wiki/ISO_8601) The [wikipedia page for HDF5](https://en.wikipedia.org/wiki/Hierarchical_Data_Format) has a list of languages which have HDF5 parsers for them already written.
 
 ## Dependencies
 * tqdm
