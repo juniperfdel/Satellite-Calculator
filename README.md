@@ -28,6 +28,7 @@ Here is the list of non-positional arguments:
 * `-s`, `--solve` will calculate the satellite positions around culmination based on the next four parameters which are `<start time in seconds before culmination> <duration in seconds> <timestep in seconds> <alt/az flag>` and are all required. If `<alt/az flag>` is set to 1, then alt/az data will be added. Setting any other number will prevent this.
 * `-a`, `--alt` will set the altitude at which the calculations for rising and falling occur; by default it will be 30.
 * `-c`, `--csv` will specify the section in `csv_config.ini` to use. default is "DEFAULT"
+* `-a`, `--all` will use all satellites found in the TLE file
 
 ## Get Satellite Positions (get_satellite_pos.py)
 This script calculates the positions of the given satellites wrt the observatories and if those satellites go within a specified radius around a specified coordinate, then those coordinates and times will be written into a `.hdf5` file in `output/sat_pos`. 
@@ -57,6 +58,7 @@ Here is the list of non-positional arguments:
 * `-h`, `--help` will print the help message
 * `-tz`, `--set-timezone` will set the timezone to use in the output with you can find a list of possible inputs [here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones). By default it uses the one your computer is set to.
 * `-r`, `--reload` will re-download the TLE file from https://celestrak.com/NORAD/elements/active.txt as opposed to using a cached version.
+* `-a`, `--all` will use all satellites found in the TLE file
 
 ## Python Version
 These scripts uses features from the `typing` module which was introduced in python 3.7, so that is the minimum python version required to run this script.

@@ -8,13 +8,13 @@ except ImportError as err:
 
 localTZ = None
 
-def main(reloadSat_: bool, nDays: int, inCoord_: Tuple[float, float], inRad_: float, faltaz_: int) -> None:
+def main(reloadSat_: bool, useAll_: bool, nDays: int, inCoord_: Tuple[float, float], inRad_: float, faltaz_: int) -> None:
 	global todayUTC
 
 	startDay = todayUTC.getStartDay()
 	finalDay = startDay.getOff(days=nDays)
 
-	satCalculators = buildSatCalcs(reloadSat_)
+	satCalculators = buildSatCalcs(reloadSat_, useAll_)
 
 	inputC1 = numpy.full((1, 86400), inCoord_[0])
 	inputC2 = numpy.full((1, 86400), inCoord_[1])
@@ -50,6 +50,7 @@ if __name__ == "__main__":
 	parser.add_argument('flag', type=int, help="0 = RA/Dec; 1 = Alt/Az")
 	parser.add_argument('-tz','--set-timezone', type=str, help="The timezone to cacluate with respect to, default is your local timezone")
 	parser.add_argument('-r','--reload', action='store_true', help="Re-download the TLE file from the internet, default is false")
+	parser.add_argument('-a','--all', action='store_true', help="Use all satellites from database, default is false")
 	args = parser.parse_args()
 
 	nDays = args.days
@@ -62,4 +63,4 @@ if __name__ == "__main__":
 		localTZ = timezone(inputTZ)
 
 	pathlib.Path(os.path.join("output","sat_pos")).mkdir(parents=True, exist_ok=True)
-	main(reloadSat, nDays, (args.coordinate_1, args.coordinate_2), args.radius, args.flag)
+	main(reloadSat, args.all, nDays, (args.coordinate_1, args.coordinate_2), args.radius, args.flag)

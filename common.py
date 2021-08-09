@@ -361,7 +361,7 @@ class satCalculator:
 
 
 
-def buildSatList(reloadSat: bool) -> List[EarthSatellite]:
+def buildSatList(reloadSat: bool, useAll_: bool = False) -> List[EarthSatellite]:
 	global todayUTC
 	satURL = "https://celestrak.com/NORAD/elements/active.txt"
 	satellites = None
@@ -376,7 +376,7 @@ def buildSatList(reloadSat: bool) -> List[EarthSatellite]:
 	satelliteArray = []
 	for sat in satellites:
 		days = todayUTC.getSkyfield() - sat.epoch
-		if (days < 14) and (0 < sum([bool(satname in sat.name) for satname in satNames])):
+		if (days < 14) and (( 0 < sum([bool(satname in sat.name) for satname in satNames]) ) or useAll_):
 			satelliteArray.append(sat)
 
 	if len(satelliteArray) == 0:
@@ -386,15 +386,14 @@ def buildSatList(reloadSat: bool) -> List[EarthSatellite]:
 	return satelliteArray
 
 
-def buildSatCalcs(reloadSat_: bool) -> List[satCalculator]:
-	satelliteArray = buildSatList(reloadSat_)
+def buildSatCalcs(reloadSat_: bool, useAll_: bool = False) -> List[satCalculator]:
+	satelliteArray = buildSatList(reloadSat_, useAll_)
 
 	satCalculators = []
 
 	with open("config/obs_data.yaml","r") as fp:
 		obsData = yaml.load(fp, Loader=yaml.SafeLoader)
-
-
+	
 	for obsName, obsArr in obsData.items():
 		observatory = iers2010.latlon(*obsArr)
 		earthObservatory = earth + observatory

@@ -81,10 +81,10 @@ def turnToCSV(inFileName: str, inConfigSection_: str, inData:  List[Dict[str, An
 			fp.write(rowS)
 
 
-def main(reloadSat_: bool, solveForSatPos: Union[Sequence[float], None], inAltAmt: float,  nDays: int, inConfigSection: str) -> None:
+def main(reloadSat_: bool, useAll_:bool, solveForSatPos: Union[Sequence[float], None], inAltAmt: float,  nDays: int, inConfigSection: str) -> None:
 	global todayUTC
 
-	satCalculators = buildSatCalcs(reloadSat_)
+	satCalculators = buildSatCalcs(reloadSat_, useAll_)
 	finalDay = todayUTC.getOff(days=nDays)
 
 	print(f"Calculating culminations of {len(satCalculators)} satellites")
@@ -142,7 +142,8 @@ if __name__ == "__main__":
 	parser.add_argument('-s','--solve', nargs=4, type=float, help="Solve for the satellite positions around culmination, Format: <start time in seconds before culmination> <duration in seconds> <timestep in seconds> <alt/az flag>. If <alt/az flag> is set to 1, then alt/az data will be added. Setting any other number will prevent this.")
 	parser.add_argument('-a', '--alt', nargs=1, type=float, default=30., help="Change the altitude at which the calculations for rising and falling occur")
 	parser.add_argument('-c', '--csv', type=str, default="DEFAULT", help="Specifies the section in csv_config.ini to use when building the csv files")
-
+	parser.add_argument('-a','--all', action='store_true', help="Use all satellites from database, default is false")
+	
 	args = parser.parse_args()
 
 
@@ -165,4 +166,4 @@ if __name__ == "__main__":
 			raise err
 
 	pathlib.Path(os.path.join("output")).mkdir(parents=True, exist_ok=True)
-	main(reloadSat, solveForSatPos, getattr(args,"alt", 30.), nDays, getattr(args,"csv", "DEFAULT"))
+	main(reloadSat, getattr(args,"all",False),  solveForSatPos, getattr(args,"alt", 30.), nDays, getattr(args,"csv", "DEFAULT"))
