@@ -247,7 +247,7 @@ class satCalculator:
 		self.diff = self.sat - self.obs
 
 	def getSatName(self) -> str:
-		return self.sat.name
+		return self.sat.name.replace("/","|")
 
 	def getObsName(self) -> str:
 		return self.obsName
