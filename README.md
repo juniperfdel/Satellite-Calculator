@@ -56,7 +56,6 @@ Here is the list of positional arguments:
 
 Here is the list of non-positional arguments:
 * `-h`, `--help` will print the help message
-* `-tz`, `--set-timezone` will set the timezone to use in the output with you can find a list of possible inputs [here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones). By default it uses the one your computer is set to.
 * `-r`, `--reload` will re-download the TLE file from https://celestrak.com/NORAD/elements/active.txt as opposed to using a cached version.
 * `-a`, `--all` will use all satellites found in the TLE file
 
