@@ -19,9 +19,9 @@ def main(reloadSat_: bool, useAll_: bool, nDays: int, inCoord_: Tuple[float, flo
 	inputC1 = numpy.full((1, 86400), inCoord_[0])
 	inputC2 = numpy.full((1, 86400), inCoord_[1])
 	for satCalc in  satCalculators:
-		outFileName = os.path.join("output","sat_pos",f"{satCalc.getSatName()}_{satCalc.getObsName()}_{int(inRad_*100)}_{todayUTC.getfileformat()}-{finalDay.getfileformat()}.hdf5")
+		outFileName = os.path.join("output","sat_pos",f"{satCalc.getSatName()}_{satCalc.getObsName()}_{int(inRad_*100)}_{startDay.getfileformat()}-{finalDay.getfileformat()}.hdf5")
 		satStore = h5py.File(outFileName, 'w')
-		print(f"Looking for {satCalc.getSatName()} at {satCalc.getObsName()} from {todayUTC} to {finalDay} around {inCoord_} at a radius of {inRad_}")
+		print(f"Looking for {satCalc.getSatName()} at {satCalc.getObsName()} from {startDay} to {finalDay} around {inCoord_} at a radius of {inRad_}")
 		for dayNum in tqdm(range(nDays)):
 			startT = startDay.getOff(days=dayNum)
 			dayPos = satCalc.getObsCoordBetween(startT, 86400., 1., True)
