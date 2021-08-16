@@ -125,9 +125,9 @@ def main(reloadSat_: bool, useAll_:bool, solveForSatPos: Union[Sequence[float], 
 							satStore.create_dataset(datasetName, data=storePos)
 
 		if len(culmData) > 0:
-			print(f"Found {satCalc.getSatName()} culminating {len(culmData)} times at {satCalc.getObsName()}, for more info open {satCalc.getObsName()}.csv")
+			print(f"Found {satCalc.getSatName()} culminating {len(culmData)} times at {satCalc.getObsName()}, for more info open 'output/{satCalc.getSatName()}_{satCalc.getObsName()}_{todayUTC.getfileformat()}-{finalDay.getfileformat()}.csv'")
 			print("")
-			turnToCSV(f"{satCalc.getSatName()}_{satCalc.getObsName()}_{todayUTC.getfileformat()}-{finalDay.getfileformat()}.csv", inConfigSection, culmData)
+			turnToCSV(f"output/{satCalc.getSatName()}_{satCalc.getObsName()}_{todayUTC.getfileformat()}-{finalDay.getfileformat()}.csv", inConfigSection, culmData)
 		else:
 			print(f"Did not find {satCalc.getSatName()} culminating at {obsName} from {todayUTC} to {finalDay}")
 
