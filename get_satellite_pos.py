@@ -48,7 +48,6 @@ if __name__ == "__main__":
 	parser.add_argument('coordinate_2', type=float, help="Dec or Az depending on <flag>")
 	parser.add_argument('radius', type=float, help="The radius around the coordinate")
 	parser.add_argument('flag', type=int, help="0 = RA/Dec; 1 = Alt/Az")
-	parser.add_argument('-tz','--set-timezone', type=str, help="The timezone to cacluate with respect to, default is your local timezone")
 	parser.add_argument('-r','--reload', action='store_true', help="Re-download the TLE file from the internet, default is false")
 	parser.add_argument('-a','--all', action='store_true', help="Use all satellites from database, default is false")
 	args = parser.parse_args()
