@@ -12,6 +12,9 @@ geopy = "*"
 skyfield = "*"
 tzlocal = "*"
 h5py = "*"
+cached-property = "*"
+pandas = "*"
+astropy = "*"
 
 [dev-packages]
 

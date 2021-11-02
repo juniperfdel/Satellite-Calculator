@@ -4,7 +4,7 @@ A set of scripts whose goal is to calculate satellite positions given various co
 
 ## Find Satellite Events (find_satellite_events.py)
 
-This is a script which calculates the various characteristics of a satellite when it rises, culminates, and falls . Outputs in a .csv file called `<sat name>_<obs name>_<today>-<final day>.csv`
+This is a script which calculates the various characteristics of a satellite when it rises, culminates, and falls . Outputs in a .csv file called `culmination_output.csv`
 
 ### Inputs
 #### obs_data.yaml

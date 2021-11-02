@@ -1,18 +1,18 @@
 import argparse
 import os
 import pathlib
+from typing import Tuple
 
+import numpy
 from tqdm import tqdm
 
-from common import *
+from utils import build_obs_sat, get_obs_coord_between, two_object_distance, TimeDeltaObj, today
 
 try:
 	import h5py
 except ImportError as err:
 	print("In order to store satellite positions please install h5py https://pypi.org/project/h5py/\n\n")
 	raise err
-
-localTZ = None
 
 
 class HDF5FileNotSetup(IOError):
@@ -64,52 +64,76 @@ class HDF5FileHandler:
 		self.is_working = False
 
 
-def main(reloadSat_: bool, useAll_: bool, merge_: bool, nDays: int, inCoord_: Tuple[float, float], inRad_: float, faltaz_: int, ignore_empty: bool) -> None:
-	today_utc = TimeObj(datetime.now())
+def make_coord_check(in_radius, in_coord, use_alt_az):
+	df_ind = ('alt', 'az') if bool(use_alt_az) else ('ra', 'dec')
 	
-	startDay = today_utc.get_start_day()
-	finalDay = startDay.get_off(days=nDays)
+	def coord_check(in_df):
+		return two_object_distance(in_df[df_ind[0]], in_df[df_ind[1]], in_coord[0], in_coord[1]) < in_radius
 	
-	sat_calculators = build_sat_calcs(reloadSat_, useAll_)
+	return coord_check
+
+
+def parse_arguments(in_args):
+	n_days = in_args.days
+	reload_sat = in_args.reload
+	use_all_ = in_args.all
+	merge_ = in_args.merge
+	in_coord_ = (in_args.coordinate_1, in_args.coordinate_2)
+	in_rad_ = in_args.radius
+	f_alt_az_ = in_args.flag
+	ignore_empty = in_args.ignore_empty
 	
-	inputC1 = numpy.full((1, 86400), inCoord_[0])
-	inputC2 = numpy.full((1, 86400), inCoord_[1])
+	return n_days, reload_sat, use_all_, merge_, in_coord_, in_rad_, f_alt_az_, ignore_empty
+
+
+def main(in_args) -> None:
+	n_days, reload_sat, use_all_, merge_, in_coord_, in_rad_, f_alt_az_, ignore_empty = parse_arguments(in_args)
+	
+	today_utc = today()
+	
+	start_day = today_utc.get_start_day()
+	final_day = start_day.get_off(days=n_days)
+	step_t = TimeDeltaObj(seconds=1)
+	
+	observatory_sats = build_obs_sat(reload_sat, use_all_)
+	
+	coord_checker = make_coord_check(in_rad_, in_coord_, bool(f_alt_az_))
 	
 	file_handler = HDF5FileHandler()
 	
-	for sat_calc in sat_calculators:
+	for obs_sat_obj in observatory_sats:
 		if merge_:
 			out_file = os.path.join("output", "calculated_satellite_data.hdf5")
 			file_handler.open_file(out_file)
-			file_handler.add_group(sat_calc.get_obs_name())
-			file_handler.add_group(sat_calc.get_sat_name())
-			file_handler.add_group(str(numpy.around(inRad_, 3)))
+			file_handler.add_group(obs_sat_obj.obs_name)
+			file_handler.add_group(obs_sat_obj.sat_name)
+			file_handler.add_group(str(numpy.around(in_rad_, 3)))
 		else:
-			out_file = os.path.join("output", "sat_pos", f"{sat_calc.get_sat_name()}_{sat_calc.get_obs_name()}_{int(inRad_ * 100)}_{today_utc.get_file_format()}-{finalDay.get_file_format()}.hdf5")
+			out_file = os.path.join(
+				"output", "sat_pos",
+				f"{obs_sat_obj.sat_name}_{obs_sat_obj.obs_name}_"
+				f"{int(in_rad_ * 100)}_{today_utc.get_file_format()}-"
+				f"{final_day.get_file_format()}.hdf5"
+			)
 			file_handler.open_file(out_file)
 		
 		print(
-			f"Looking for {sat_calc.get_sat_name()} at "
-			f"{sat_calc.get_obs_name()} from {today_utc} to {finalDay} "
-			f"around {inCoord_} at a radius of {inRad_}"
+			f"Looking for {obs_sat_obj.sat_name} at "
+			f"{obs_sat_obj.obs_name} from {today_utc} to {final_day} "
+			f"around {in_coord_} at a radius of {in_rad_}"
 		)
 		
-		for dayNum in tqdm(range(nDays)):
-			start_t = startDay.get_off(days=dayNum)
-			day_pos = sat_calc.get_obs_coord_between(start_t, 86400., 1., True)
-			
-			sat_ind = (3, 4) if bool(faltaz_) else (1, 2)
-			sat_c1 = day_pos[:, sat_ind[0]]
-			sat_c2 = day_pos[:, sat_ind[1]]
-			dis_arr = two_object_distance_explict(sat_c1, sat_c2, inputC1[0], inputC2[0])
-			ind_arr = numpy.nonzero(dis_arr < inRad_)[0]
-			good_arr = day_pos[ind_arr, :]
+		for day_num in tqdm(range(n_days)):
+			start_t = start_day.get_off(days=day_num)
+			end_t = start_t.get_off(days=1)
+			pd_sat_data = get_obs_coord_between(obs_sat_obj, start_t, end_t, step_t)
+			pd_sat_data = pd_sat_data[coord_checker(pd_sat_data)]
 			
 			# Storage step
-			if ignore_empty and (0 in good_arr.shape):
+			if ignore_empty and (0 in pd_sat_data.shape):
 				continue
 			dataset_name = start_t.iso_format()
-			file_handler.add_dataset(dataset_name, good_arr)
+			file_handler.add_dataset(dataset_name, pd_sat_data.to_numpy())
 	
 	file_handler.finish_all()
 
@@ -125,12 +149,10 @@ if __name__ == "__main__":
 	parser.add_argument('-r', '--reload', action='store_true', help="Re-download the TLE file from the internet")
 	parser.add_argument('-a', '--all', action='store_true', help="Use all satellites from database")
 	parser.add_argument('-m', '--merge', action='store_true', help="write all data into a single file")
-	parser.add_argument('-i','--ignore-empty', action='store_true', help="If the dataset is empty, it will not be written to the file")
+	parser.add_argument(
+		'-i', '--ignore-empty', action='store_true', help="If the dataset is empty, it will not be written to the file")
 	
 	args = parser.parse_args()
 	
-	nDays = args.days
-	reloadSat = args.reload
-	
 	pathlib.Path(os.path.join("output", "sat_pos")).mkdir(parents=True, exist_ok=True)
-	main(reloadSat, args.all, args.merge, nDays, (args.coordinate_1, args.coordinate_2), args.radius, args.flag, args.ignore_empty)
+	main(args)
