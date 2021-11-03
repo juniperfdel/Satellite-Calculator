@@ -3,7 +3,8 @@ import configparser
 import json
 import os
 import pathlib
-from datetime import timezone
+import pytz
+
 from operator import attrgetter
 from typing import List, Sequence, Tuple
 
@@ -72,7 +73,7 @@ def parse_arguments(in_args):
 	ignore_day = getattr(in_args, "ignore_daytime", False)
 	
 	input_tz = getattr(in_args, "set_timezone", None)
-	input_tz = get_localzone() if input_tz is None else timezone(input_tz)
+	input_tz = get_localzone() if input_tz is None else pytz.timezone(input_tz)
 	input_tz = input_tz.zone
 	
 	return n_days, reload_sat, input_tz, use_all_, in_alt_amt, in_config_section, ignore_day

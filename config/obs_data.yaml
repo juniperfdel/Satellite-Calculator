@@ -1,10 +1,10 @@
 # This contains the information about which observatories to observe
 # The elements are (<latitude in deg>, <longitude in deg>, <altitude in meters>)
 # with the element key being the name
-# Lick:
-# - 37.341
-# - -121.642
-# - 1282.0
+Lick:
+- 37.341
+- -121.642
+- 1282.0
 VERITAS:
 - 31.675
 - -110.9519
