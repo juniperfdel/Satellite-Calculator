@@ -69,11 +69,14 @@ If any script calculates the positions of a satellite, it will place those posit
 These scripts uses features from the `typing` module which was introduced in python 3.7, so that is the minimum recommended python version required to run this script.
 ### Packages
 This repository contains a `pipfile` which is used by the dependency management system [pipenv](https://pipenv.pypa.io/en/latest/). I highly recommend using it as it will isolate the python packages needed for this repository from your host system with `pipenv install`.
+* numpy
+* skyfield
+* pandas
+* astropy
+* geopy
 * tqdm
 * pytz
 * tzlocal
-* numpy
-* skyfield
-* geopy
+* cached-property
 * pyyaml
 * h5py (If storing satellite positions)
