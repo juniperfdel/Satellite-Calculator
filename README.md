@@ -63,7 +63,7 @@ Here is the list of non-positional arguments:
 * `-r`, `--reload` will re-download the TLE file from https://celestrak.com/NORAD/elements/active.txt as opposed to using a cached version.
 * `-a`, `--all` will use all satellites found in the TLE file
 * `-m`, `--merge` will cause all satellite data to be inside the same file for a given radius, observatory, and date range.
-* `-i`, `--ignore-empty` will prevent empty datasets to be written
+* `-i`, `--ignore-empty` will prevent empty datasets from being written
 
 ## HDF5 Note
 If any script calculates the positions of a satellite, it will place those positions inside an individual table in an HDF5 file. Each table corresponds to a culmination or day (depending on the script). Each table is referenced by a key which is the time of the first element in [ISO-8601 format](https://en.wikipedia.org/wiki/ISO_8601) The [wikipedia page for HDF5](https://en.wikipedia.org/wiki/Hierarchical_Data_Format) has a list of languages which have HDF5 parsers for them already written.
