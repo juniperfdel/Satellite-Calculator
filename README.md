@@ -1,4 +1,6 @@
-# Satellite Calculator
+Please go to the public version of this repo for more up-to-date code https://github.com/gregoryfdel/Satellite-Calculator
+
+# Satellite Calculator (Private) 
 A set of scripts whose goal is to calculate satellite positions given various conditions. This repository is a WIP, future scripts may be added. Pull Requests are welcomed.
 
 
