@@ -15,8 +15,3 @@ h5py = "*"
 cached-property = "*"
 pandas = "*"
 astropy = "*"
-
-[dev-packages]
-
-[requires]
-python_version = "3.8"
