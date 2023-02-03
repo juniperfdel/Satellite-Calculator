@@ -20,7 +20,7 @@ def format_fn(in_f):
         out_float = in_f(*args, **kwargs)
         return f"{out_float:.4f}"
 
-    str_fn.__name__ = in_f.__name__ + "_str"
+    str_fn.__name__ = f"{in_f.__name__}_str"
     return str_fn
 
 

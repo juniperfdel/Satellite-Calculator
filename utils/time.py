@@ -160,7 +160,7 @@ class TimeDeltaObj:
 
         :param input_delta:
         """
-        if len(delta_args) > 0:
+        if delta_args:
             self.dt = timedelta(**delta_args)
         elif isinstance(input_delta, timedelta):
             self.dt = input_delta

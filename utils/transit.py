@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Iterator, Union
 
 from utils import ObservatorySatellite, SatellitePosition, TimeObj, MetaFormatter
 
@@ -24,18 +24,18 @@ class SingleCulmination(metaclass=MetaFormatter):
     def threshold(self) -> float:
         return self.parent.threshold
 
-
+PossibleSatPos = Union[SatellitePosition, None]
 class DayTransits:
     """Helper class which stores the culmination times and associated information"""
 
     def __init__(self, in_obs_sat: ObservatorySatellite, in_threshold: float):
         self.obs_sat = in_obs_sat
         self.threshold = in_threshold
-        self._start = None
+        self._start: PossibleSatPos = None
         self.culminations = []
-        self._end = None
+        self._end: PossibleSatPos = None
 
-    def __iter__(self) -> SingleCulmination:
+    def __iter__(self) -> Iterator[SingleCulmination]:
         yield from (
             SingleCulmination(self, self.start, culmination, self.end)
             for culmination in self.culminations
@@ -50,7 +50,7 @@ class DayTransits:
         )
 
     @property
-    def start(self) -> Union[SatellitePosition, None]:
+    def start(self) -> PossibleSatPos:
         return self._start
 
     @start.setter
@@ -58,7 +58,7 @@ class DayTransits:
         self._start = self.obs_sat.at(TimeObj(other))
 
     @property
-    def end(self) -> Union[SatellitePosition, None]:
+    def end(self) -> PossibleSatPos:
         return self._end
 
     @end.setter
@@ -66,7 +66,9 @@ class DayTransits:
         self._end = self.obs_sat.at(TimeObj(other))
 
     def add(self, in_time: Any) -> int:
-        in_time = TimeObj(in_time, in_local_tz=self._start.time.local_tz)
+        if self.start is None or self.end is None:
+            return -1
+        in_time = TimeObj(in_time, in_local_tz=self.start.time.local_tz)
         if self.start.time <= in_time <= self.end.time:
             self.culminations.append(self.obs_sat.at(in_time))
             self.culminations.sort(key=lambda x: x.time)
@@ -74,4 +76,6 @@ class DayTransits:
         return -1
 
     def get_duration(self) -> float:
+        if self.start is None or self.end is None:
+            return -1
         return (self.end.time - self.start.time).total_seconds()
