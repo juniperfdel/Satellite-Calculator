@@ -1,6 +1,7 @@
 import argparse
 import os
-import pathlib
+from pathlib import Path
+from typing import Tuple
 
 import numpy
 from tqdm import tqdm
@@ -71,137 +72,98 @@ class HDF5FileHandler:
         self.is_working = False
 
 
-def make_coord_check(in_radius, in_coord, use_alt_az):
-    df_ind = ("alt", "az") if bool(use_alt_az) else ("ra", "dec")
+def make_coord_check(in_radius, coord_1, coord_2, use_alt_az):
+	df_ind = ('alt', 'az') if bool(use_alt_az) else ('ra', 'dec')
+	
+	def coord_check(in_df):
+		return two_object_distance(in_df[df_ind[0]], in_df[df_ind[1]], coord_1, coord_2) < in_radius
+	
+	return coord_check
 
-    def coord_check(in_df):
-        return (
-            two_object_distance(
-                in_df[df_ind[0]], in_df[df_ind[1]], in_coord[0], in_coord[1]
-            )
-            < in_radius
-        )
+def main(pargs) -> None:
+	today_utc = today()
+	
+	start_day = today_utc.get_start_day()
+	final_day = start_day.get_off(days=pargs.days)
 
-    return coord_check
+	step_size = pargs.step if (pargs.step is not None) and (pargs.step > 1) else 1
+	step_t = TimeDeltaObj(seconds=step_size)
 
+	if args.search:
+		coord_checker = make_coord_check(
+			args.search[2], 
+			args.search[1], 
+			args.search[0], 
+			bool(args.search[3])
+		)
+	else:
+		coord_checker = None
+	
+	file_handler = HDF5FileHandler()
+	tles = [None] if pargs.tles is None else pargs.tles
 
-def parse_arguments(in_args):
-    n_days = in_args.days
-    reload_sat = in_args.reload
-    use_all_ = in_args.all
-    merge_ = in_args.merge
-    in_coord_ = (in_args.coordinate_1, in_args.coordinate_2)
-    in_rad_ = in_args.radius
-    f_alt_az_ = in_args.flag
-    ignore_empty = in_args.ignore_empty
+	for tle in tles:
+		tle_name = "default" if tle is None else tle.stem
+		observatory_sats = build_obs_sat(pargs.reload, pargs.sat_cache, pargs.all, tle)
+		for obs_sat_obj in observatory_sats:
+			if pargs.merge:
+				out_file = os.path.join("output", "calculated_satellite_data.hdf5")
+				file_handler.open_file(out_file)
+				if tle is not None:
+					file_handler.add_group(tle_name)
+				file_handler.add_group(obs_sat_obj.obs_name)
+				file_handler.add_group(obs_sat_obj.sat_name)
+				if coord_checker is not None:
+					file_handler.add_group(str(numpy.around(args.search[2], 3)))
+			else:
+				rad_str = "" if coord_checker is None else str(int(args.search[2] * 100))
+				out_file = os.path.join(
+					"output", "sat_pos",
+					f"{tle_name}_{obs_sat_obj.sat_name}_{obs_sat_obj.obs_name}_"
+					f"{rad_str}_{today_utc.get_file_format()}-"
+					f"{final_day.get_file_format()}.hdf5"
+				)
+				file_handler.open_file(out_file)
+			
+			user_out = "" if coord_checker is None else f"around {(args.search[0], args.search[1])} at a radius of {args.search[2]} "
+			print(
+				f"Looking for {obs_sat_obj.sat_name} at "
+				f"{obs_sat_obj.obs_name} from {today_utc} to {final_day} " + user_out +
+				f"using the {tle_name} TLE file"
+			)
+			
+			for day_num in tqdm(range(pargs.days)):
+				start_t = start_day.get_off(days=day_num)
+				end_t = start_t.get_off(days=1)
+				pd_sat_data = get_obs_coord_between(obs_sat_obj, start_t, end_t, step_t)
 
-    return (
-        n_days,
-        reload_sat,
-        use_all_,
-        merge_,
-        in_coord_,
-        in_rad_,
-        f_alt_az_,
-        ignore_empty,
-    )
+				if coord_checker is not None:
+					pd_sat_data = pd_sat_data[coord_checker(pd_sat_data)]
+				
+				# Storage step
+				if pargs.ignore_empty and (0 in pd_sat_data.shape):
+					continue
 
-
-def main(in_args) -> None:
-    (
-        n_days,
-        reload_sat,
-        use_all_,
-        merge_,
-        in_coord_,
-        in_rad_,
-        f_alt_az_,
-        ignore_empty,
-    ) = parse_arguments(in_args)
-
-    today_utc = today()
-
-    start_day = today_utc.get_start_day()
-    final_day = start_day.get_off(days=n_days)
-    step_t = TimeDeltaObj(seconds=1)
-
-    observatory_sats = build_obs_sat(reload_sat, use_all_)
-
-    coord_checker = make_coord_check(in_rad_, in_coord_, bool(f_alt_az_))
-
-    file_handler = HDF5FileHandler()
-
-    for obs_sat_obj in observatory_sats:
-        if merge_:
-            out_file = os.path.join("output", "calculated_satellite_data.hdf5")
-            file_handler.open_file(out_file)
-            file_handler.add_group(obs_sat_obj.obs_name)
-            file_handler.add_group(obs_sat_obj.sat_name)
-            file_handler.add_group(str(numpy.around(in_rad_, 3)))
-        else:
-            out_file = os.path.join(
-                "output",
-                "sat_pos",
-                f"{obs_sat_obj.sat_name}_{obs_sat_obj.obs_name}_"
-                f"{int(in_rad_ * 100)}_{today_utc.get_file_format()}-"
-                f"{final_day.get_file_format()}.hdf5",
-            )
-            file_handler.open_file(out_file)
-
-        print(
-            f"Looking for {obs_sat_obj.sat_name} at "
-            f"{obs_sat_obj.obs_name} from {today_utc} to {final_day} "
-            f"around {in_coord_} at a radius of {in_rad_}"
-        )
-
-        for day_num in tqdm(range(n_days)):
-            start_t = start_day.get_off(days=day_num)
-            end_t = start_t.get_off(days=1)
-            pd_sat_data = get_obs_coord_between(obs_sat_obj, start_t, end_t, step_t)
-            pd_sat_data = pd_sat_data[coord_checker(pd_sat_data)]
-
-            # Storage step
-            if ignore_empty and (0 in pd_sat_data.shape):
-                continue
-            dataset_name = start_t.iso_format()
-            file_handler.add_dataset(dataset_name, pd_sat_data.to_numpy())
-
-    file_handler.finish_all()
+				dataset_name = start_t.iso_format()
+				file_handler.add_dataset(dataset_name, pd_sat_data.to_numpy())
+	
+	file_handler.finish_all()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="search the inputted satellites track for how close each will get to your input."
-    )
-    parser.add_argument("days", type=int, help="The number of days to calculate for")
-    parser.add_argument(
-        "coordinate_1", type=float, help="RA or Alt depending on <flag>"
-    )
-    parser.add_argument(
-        "coordinate_2", type=float, help="Dec or Az depending on <flag>"
-    )
-    parser.add_argument("radius", type=float, help="The radius around the coordinate")
-    parser.add_argument("flag", type=int, help="0 = RA/Dec; 1 = Alt/Az")
-    parser.add_argument(
-        "-r",
-        "--reload",
-        action="store_true",
-        help="Re-download the TLE file from the internet",
-    )
-    parser.add_argument(
-        "-a", "--all", action="store_true", help="Use all satellites from database"
-    )
-    parser.add_argument(
-        "-m", "--merge", action="store_true", help="write all data into a single file"
-    )
-    parser.add_argument(
-        "-i",
-        "--ignore-empty",
-        action="store_true",
-        help="If the dataset is empty, it will not be written to the file",
-    )
-
-    args = parser.parse_args()
-
-    pathlib.Path(os.path.join("output", "sat_pos")).mkdir(parents=True, exist_ok=True)
-    main(args)
+	parser = argparse.ArgumentParser(
+		description='search the inputted satellites track for how close each will get to your input.')
+	parser.add_argument('days', type=int, help='The number of days to calculate for')
+	parser.add_argument("--search", nargs=4, type=float, help="<RA/Alt> <Dec/Az> <Radius> <Flag>")
+	parser.add_argument('-r', '--reload', action='store_true', help="Re-download the TLE file from the internet")
+	parser.add_argument('-sc', '--sat-cache', action='store_true', help="Automatically Cache TLE files")
+	parser.add_argument('-a', '--all', action='store_true', help="Use all satellites from database")
+	parser.add_argument('-m', '--merge', action='store_true', help="write all data into a single file")
+	parser.add_argument('-i', '--ignore-empty', action='store_true', help="If the dataset is empty, it will not be written to the file")
+	parser.add_argument('--tles', type=Path, nargs="+", help="Specify tle files to use instead of downloading them")
+	parser.add_argument('--step', type=int, nargs=1, help="Step size in seconds", deault=1)
+	
+	args = parser.parse_args()
+	
+	Path(os.path.join("output", "sat_pos")).mkdir(parents=True, exist_ok=True)
+	main(args)
