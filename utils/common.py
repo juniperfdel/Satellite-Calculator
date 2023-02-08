@@ -109,8 +109,7 @@ class ObservatorySatelliteFactory:
         self.start_utc: Union[TimeObj, None] = None
         self.tles: list[str] = (
             ["https://celestrak.com/NORAD/elements/active.txt"] 
-            if tles is None else 
-            [str(Path(ltle).resolve().absolute()) for ltle in tles]
+            if tles is None else tles
         )
         self.reload_sat: bool = reload_sat
         self.cache_sat: bool = cache_sat
@@ -167,27 +166,14 @@ class ObservatorySatelliteFactory:
             with open("config/sat_list.txt", "r") as fp:
                 sat_names = [x.strip() for x in fp.readlines()]
 
+            satellites = []
             satellites = [
                 sat
                 for sat in loaded_satellites
-                if (
-                    self.ignore_limit or 
-                    ((self.start_utc.sf - sat.epoch) < 14)
-                ) and any(sat_name in sat.name for sat_name in sat_names)
+                if (self.ignore_limit or ((self.start_utc.sf - sat.epoch) < 14)) and 
+                any(sat_name in sat.name for sat_name in sat_names)
             ]
-
-        if not satellites:
-            if is_url:
-                raise ValueError(
-                    "No satellites found for the TLE from the internet "
-                    "please retry with --reload, disable the epoch check, or check to ensure each are still active"
-                )
-
-            else:
-                raise ValueError(
-                    f"No satellites found for the TLE {sat_url} "
-                    "please retry with different TLEs, disable the epoch check, or check to ensure each are still active"
-                )
+        
         return satellites
 
     def _make_active_obs(self):

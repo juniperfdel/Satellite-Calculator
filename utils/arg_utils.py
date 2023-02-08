@@ -37,7 +37,7 @@ def add_common_params(parser: argparse.ArgumentParser):
     parser.add_argument(
         "-sd",
         "--start-date",
-        type="str",
+        type=str,
         default="today",
         help="specify a starting date to begin calculations format is <year>-<month>-<day>"
     )
@@ -51,7 +51,7 @@ def add_common_params(parser: argparse.ArgumentParser):
 
     parser.add_argument(
         "--tles",
-        type=Path,
+        type=str,
         nargs="+",
         help="Specify tle files to use instead of downloading them",
     )

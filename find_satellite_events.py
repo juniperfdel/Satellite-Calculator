@@ -2,17 +2,15 @@ import argparse
 import configparser
 import json
 import os
-import pathlib
 
-from datetime import datetime
+
 from operator import attrgetter
+from pathlib import Path
 from typing import List
 
-import pytz
 from tqdm import tqdm
-from tzlocal import get_localzone
-from utils.arg_utils import add_common_params
 
+from utils.arg_utils import add_common_params
 from utils.common import ObservatorySatelliteFactory, get_day_transits
 from utils.transit import DayTransits, SingleCulmination
 
@@ -115,7 +113,7 @@ def main(pargs: argparse.Namespace) -> None:
                 culmination_data.extend(day_transits)
         
     write_to_csv_file(
-        f"{pargs.output_file}.csv",
+        f"{pargs.output_file[0]}.csv",
         pargs.csv,
         culmination_data,
         pargs.ignore_daytime,
@@ -170,10 +168,15 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-o", "--output-file", nargs=1, type=str, default="culmination_output"
+        "-o", 
+        "--output-file", 
+        nargs=1, 
+        type=str, 
+        help="name of the file to output",
+        default="culmination_output"
     )
 
     args = parser.parse_args()
 
-    pathlib.Path(os.path.join("output")).mkdir(parents=True, exist_ok=True)
+    Path("output").mkdir(parents=True, exist_ok=True)
     main(args)

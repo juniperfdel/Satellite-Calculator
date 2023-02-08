@@ -1,7 +1,6 @@
 import argparse
 import os
 from pathlib import Path
-from typing import Tuple
 
 import numpy
 from tqdm import tqdm
