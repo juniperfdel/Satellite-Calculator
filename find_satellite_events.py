@@ -113,7 +113,7 @@ def main(pargs: argparse.Namespace) -> None:
                 culmination_data.extend(day_transits)
         
     write_to_csv_file(
-        f"{pargs.output_file[0]}.csv",
+        f"{pargs.output_file}.csv",
         pargs.csv,
         culmination_data,
         pargs.ignore_daytime,
@@ -127,7 +127,7 @@ if __name__ == "__main__":
         description="Calculate Satellite rises, sets, and culminations for observatories found in config/obs_data.yaml"
     )
 
-    add_common_params(parser)
+    add_common_params(parser, "culmination_output")
 
     parser.add_argument(
         "-a",
@@ -167,14 +167,7 @@ if __name__ == "__main__":
         help="ignore the data points for which the setting occurs during the day",
     )
 
-    parser.add_argument(
-        "-o", 
-        "--output-file", 
-        nargs=1, 
-        type=str, 
-        help="name of the file to output",
-        default="culmination_output"
-    )
+
 
     args = parser.parse_args()
 

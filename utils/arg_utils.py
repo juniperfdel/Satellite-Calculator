@@ -2,7 +2,7 @@ import argparse
 
 from pathlib import Path
 
-def add_common_params(parser: argparse.ArgumentParser):
+def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
     parser.add_argument(
         "days",
         type=int,
@@ -54,4 +54,12 @@ def add_common_params(parser: argparse.ArgumentParser):
         type=str,
         nargs="+",
         help="Specify tle files to use instead of downloading them",
+    )
+
+    parser.add_argument(
+        "-o", 
+        "--output-file",
+        type=str, 
+        help="name of the file to output",
+        default=default_outfile
     )

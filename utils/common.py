@@ -9,6 +9,7 @@ import shutil
 import yaml
 
 import pytz
+import numpy as np
 from tzlocal import get_localzone
 
 from skyfield.sgp4lib import EarthSatellite
@@ -42,12 +43,12 @@ def get_obs_coord_between(
 
     toc_list = in_obs_sat.diff.at(sf_list)
     ra, dec, _ = toc_list.radec()
-    rv_df["ra"] = ra.degrees
-    rv_df["dec"] = dec.degrees
+    rv_df["ra"] = ra._degrees
+    rv_df["dec"] = dec._degrees
 
     alt, az, _ = toc_list.altaz()
-    rv_df["alt"] = alt.degrees
-    rv_df["az"] = az.degrees
+    rv_df["alt"] = alt._degrees
+    rv_df["az"] = az._degrees
 
     return rv_df
 

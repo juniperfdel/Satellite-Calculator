@@ -1,6 +1,7 @@
 import argparse
 import os
 from pathlib import Path
+from typing import Union
 
 import numpy
 from tqdm import tqdm
@@ -9,6 +10,8 @@ from utils.arg_utils import add_common_params
 from utils.common import ObservatorySatelliteFactory, get_obs_coord_between
 from utils.math_utils import two_object_distance
 from utils.time_utils import TimeDeltaObj
+
+from numpy.typing import ArrayLike
 
 try:
     import h5py
@@ -25,12 +28,12 @@ class HDF5FileNotSetup(IOError):
 
 class HDF5FileHandler:
     def __init__(self):
-        self.file_cache = {}
-        self.cur_file = ""
-        self.cur_group = None
-        self.is_working = False
+        self.file_cache: dict[str, h5py.File] = {}
+        self.cur_file: str = ""
+        self.cur_group: Union[h5py.Group, None] = None
+        self.is_working: bool = False
 
-    def open_file(self, file_name):
+    def open_file(self, file_name: str):
         self.is_working = True
         self.cur_file = file_name
         self.cur_group = None
@@ -39,7 +42,7 @@ class HDF5FileHandler:
         else:
             self.file_cache[file_name] = h5py.File(file_name, mode="a")
 
-    def add_group(self, group_name):
+    def add_group(self, group_name: str):
         if not self.is_working:
             raise HDF5FileNotSetup
         if self.cur_group is None:
@@ -47,13 +50,15 @@ class HDF5FileHandler:
         else:
             self.cur_group = self.cur_group.require_group(group_name)
 
-    def add_dataset(self, dataset_name, data_input):
+    def add_dataset(self, dataset_name: str, data_input: ArrayLike, **iattrs):
         if not self.is_working:
             raise HDF5FileNotSetup
         if self.cur_group is None:
-            self.file_cache[self.cur_file].create_dataset(dataset_name, data=data_input)
+            new_ds: h5py.Dataset = self.file_cache[self.cur_file].create_dataset(dataset_name, data=data_input)
         else:
-            self.cur_group.create_dataset(dataset_name, data=data_input)
+            new_ds: h5py.Dataset = self.cur_group.create_dataset(dataset_name, data=data_input)
+        for k, v in iattrs.items():
+            new_ds.attrs[k] = v
 
     def finish_all(self):
         for file_name in self.file_cache.keys():
@@ -94,7 +99,7 @@ def main(pargs: argparse.Namespace) -> None:
     start_utc = obs_sat_fact.start_utc
     final_day = start_utc.get_off(days=pargs.days)
 
-    step_size = pargs.step if (pargs.step is not None) and (pargs.step > 1) else 1
+    step_size = int(pargs.step) if (pargs.step is not None) and (pargs.step > 1) else 1
     step_t = TimeDeltaObj(seconds=step_size)
 
     if args.flag < 2:
@@ -110,7 +115,7 @@ def main(pargs: argparse.Namespace) -> None:
     file_handler = HDF5FileHandler()
     for obs_sat_obj in obs_sat_fact:
         if pargs.merge:
-            out_file = os.path.join("output", "calculated_satellite_data.hdf5")
+            out_file = os.path.join("output", f"{pargs.output_file}.hdf5")
             file_handler.open_file(out_file)
             file_handler.add_group(obs_sat_obj.obs_name)
             file_handler.add_group(obs_sat_obj.sat_name)
@@ -153,7 +158,12 @@ def main(pargs: argparse.Namespace) -> None:
                 continue
 
             dataset_name = start_t.iso_format()
-            file_handler.add_dataset(dataset_name, pd_sat_data.to_numpy())
+            file_handler.add_dataset(
+                dataset_name, 
+                pd_sat_data.to_numpy(),
+                column_names = numpy.array(pd_sat_data.columns, dtype='S'),
+                step_size_sec = step_size,
+            )
 
     file_handler.finish_all()
 
@@ -185,7 +195,7 @@ if __name__ == "__main__":
         help="0 = RA/Dec; 1 = Alt/Az; 2 = ignore"
     )
 
-    add_common_params(parser)
+    add_common_params(parser, "calculated_satellite_data")
 
     parser.add_argument(
         "-m", "--merge", action="store_true", help="write all data into a single file"
@@ -199,7 +209,10 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--step", type=int, nargs=1, help="Step size in seconds", deault=1
+        "--step", 
+        type=int, 
+        default=1,
+        help="Step size in seconds"
     )
 
     args = parser.parse_args()
