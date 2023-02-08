@@ -3,14 +3,19 @@ import configparser
 import json
 import os
 import pathlib
+
+from datetime import datetime
 from operator import attrgetter
 from typing import List
 
 import pytz
 from tqdm import tqdm
 from tzlocal import get_localzone
+from utils.arg_utils import add_common_params
 
-from utils import DayTransits, SingleCulmination, build_obs_sat, get_day_transits, today
+from utils.common import ObservatorySatelliteFactory, get_day_transits
+from utils.transit import DayTransits, SingleCulmination
+
 
 
 class ColumnDefinition:
@@ -79,42 +84,43 @@ def write_to_csv_file(
                 fp.write(row_s)
 
 
-def main(in_args) -> None:
-    today_utc = today()
-    today_utc.set_local_timezone(
-        (
-            get_localzone()
-            if in_args.timezone == "local"
-            else pytz.timezone(in_args.timezone)
-        ).zone
+def main(pargs: argparse.Namespace) -> None:
+    obs_sat_fact = ObservatorySatelliteFactory(
+        pargs.timezone,
+        pargs.reload,
+        pargs.cache,
+        pargs.all,
+        pargs.start_date,
+        pargs.ignore_limit,
+        pargs.tles
     )
 
-    sat_obs_objects = build_obs_sat(in_args.reload, in_args.cache, in_args.all)
-    final_day = today_utc.get_off(days=in_args.days)
-
-    print(f"Calculating culminations of {len(sat_obs_objects)} satellites")
+    start_utc = obs_sat_fact.start_utc
+    final_day = start_utc.get_off(days=pargs.days)
+    print(f"Calculating culminations of {len(obs_sat_fact.active_sats)} satellites")
 
     culmination_data = []
-    for sat_obs in sat_obs_objects:
+    for sat_obs in obs_sat_fact:
         print(
-            f"Looking for {sat_obs.sat_name} at {sat_obs.obs_name} from {today_utc} to {final_day}"
+            f"Looking for {sat_obs.sat_name} at {sat_obs.obs_name} "
+            f"from {start_utc} to {final_day}"
         )
 
-        for day_num in tqdm(range(in_args.days)):
-            for alt_lim in in_args.alt:
-                day_start = today_utc.get_off(days=day_num).get_start_day()
+        for day_num in tqdm(range(pargs.days)):
+            for alt_lim in pargs.alt:
+                day_start = start_utc.get_off(days=day_num).get_start_day()
                 day_end = day_start.get_off(days=1)
 
                 day_transits = get_day_transits(sat_obs, day_start, day_end, alt_lim)
                 culmination_data.extend(day_transits)
-
+        
     write_to_csv_file(
-        f"{in_args.output_file[0]}.csv",
-        in_args.csv,
+        f"{pargs.output_file}.csv",
+        pargs.csv,
         culmination_data,
-        in_args.ignore_daytime,
-        in_args.ignore_rise_day,
-        in_args.ignore_set_day,
+        pargs.ignore_daytime,
+        pargs.ignore_rise_day,
+        pargs.ignore_set_day,
     )
 
 
@@ -123,31 +129,8 @@ if __name__ == "__main__":
         description="Calculate Satellite rises, sets, and culminations for observatories found in config/obs_data.yaml"
     )
 
-    parser.add_argument(
-        "days",
-        type=int,
-        nargs="?",
-        default=120,
-        help="The number of days to calculate for, default of 120 days",
-    )
+    add_common_params(parser)
 
-    parser.add_argument(
-        "-tz",
-        "--timezone",
-        type=str,
-        default="local",
-        help="The timezone to calculate with respect to, default is your local timezone",
-    )
-
-    parser.add_argument(
-        "-r",
-        "--reload",
-        action="store_true",
-        help="Re-download the TLE file from the internet",
-    )
-    parser.add_argument(
-        "-ca", "--cache", action="store_true", help="Automatically Cache TLE files"
-    )
     parser.add_argument(
         "-a",
         "--alt",
@@ -188,10 +171,6 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "-o", "--output-file", nargs=1, type=str, default="culmination_output"
-    )
-
-    parser.add_argument(
-        "-l", "--all", action="store_true", help="Use all satellites from database"
     )
 
     args = parser.parse_args()

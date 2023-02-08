@@ -12,7 +12,7 @@ from pandas import Timestamp as PandasTimeStamp
 from pytz import timezone
 from skyfield.timelib import Time as SkyfieldTime
 
-from utils import SkyfieldConstants
+from utils.skyfield_utils import SkyfieldConstants
 
 
 def timezone_converter(

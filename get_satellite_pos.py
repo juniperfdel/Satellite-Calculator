@@ -6,13 +6,10 @@ from typing import Tuple
 import numpy
 from tqdm import tqdm
 
-from utils import (
-    build_obs_sat,
-    get_obs_coord_between,
-    two_object_distance,
-    TimeDeltaObj,
-    today,
-)
+from utils.arg_utils import add_common_params
+from utils.common import ObservatorySatelliteFactory, get_obs_coord_between
+from utils.math_utils import two_object_distance
+from utils.time_utils import TimeDeltaObj
 
 try:
     import h5py
@@ -84,77 +81,80 @@ def make_coord_check(in_radius, coord_1, coord_2, use_alt_az):
     return coord_check
 
 
-def main(pargs) -> None:
-    today_utc = today()
-
-    start_day = today_utc.get_start_day()
-    final_day = start_day.get_off(days=pargs.days)
+def main(pargs: argparse.Namespace) -> None:
+    obs_sat_fact = ObservatorySatelliteFactory(
+        pargs.timezone,
+        pargs.reload,
+        pargs.cache,
+        pargs.all,
+        pargs.start_date,
+        pargs.ignore_limit,
+        pargs.tles
+    )
+    
+    start_utc = obs_sat_fact.start_utc
+    final_day = start_utc.get_off(days=pargs.days)
 
     step_size = pargs.step if (pargs.step is not None) and (pargs.step > 1) else 1
     step_t = TimeDeltaObj(seconds=step_size)
 
-    if args.search:
+    if args.flag < 2:
         coord_checker = make_coord_check(
-            args.search[2], args.search[1], args.search[0], bool(args.search[3])
+            args.radius, 
+            args.coord1, 
+            args.coord2, 
+            bool(args.flag)
         )
     else:
         coord_checker = None
 
     file_handler = HDF5FileHandler()
-    tles = [None] if pargs.tles is None else pargs.tles
-
-    for tle in tles:
-        tle_name = "default" if tle is None else tle.stem
-        observatory_sats = build_obs_sat(pargs.reload, pargs.sat_cache, pargs.all, tle)
-        for obs_sat_obj in observatory_sats:
-            if pargs.merge:
-                out_file = os.path.join("output", "calculated_satellite_data.hdf5")
-                file_handler.open_file(out_file)
-                if tle is not None:
-                    file_handler.add_group(tle_name)
-                file_handler.add_group(obs_sat_obj.obs_name)
-                file_handler.add_group(obs_sat_obj.sat_name)
-                if coord_checker is not None:
-                    file_handler.add_group(str(numpy.around(args.search[2], 3)))
-            else:
-                rad_str = (
-                    "" if coord_checker is None else str(int(args.search[2] * 100))
-                )
-                out_file = os.path.join(
-                    "output",
-                    "sat_pos",
-                    f"{tle_name}_{obs_sat_obj.sat_name}_{obs_sat_obj.obs_name}_"
-                    f"{rad_str}_{today_utc.get_file_format()}-"
-                    f"{final_day.get_file_format()}.hdf5",
-                )
-                file_handler.open_file(out_file)
-
-            user_out = (
-                ""
-                if coord_checker is None
-                else f"around {(args.search[0], args.search[1])} at a radius of {args.search[2]} "
+    for obs_sat_obj in obs_sat_fact:
+        if pargs.merge:
+            out_file = os.path.join("output", "calculated_satellite_data.hdf5")
+            file_handler.open_file(out_file)
+            file_handler.add_group(obs_sat_obj.obs_name)
+            file_handler.add_group(obs_sat_obj.sat_name)
+            if coord_checker is not None:
+                file_handler.add_group(str(numpy.around(args.search[2], 3)))
+        else:
+            rad_str = (
+                "" if coord_checker is None else str(int(args.search[2] * 100))
             )
-            print(
-                f"Looking for {obs_sat_obj.sat_name} at "
-                f"{obs_sat_obj.obs_name} from {today_utc} to {final_day} "
-                + user_out
-                + f"using the {tle_name} TLE file"
+            out_file = os.path.join(
+                "output",
+                "sat_pos",
+                f"{obs_sat_obj.sat_name}_{obs_sat_obj.obs_name}_"
+                f"{rad_str}_{start_utc.get_file_format()}-"
+                f"{final_day.get_file_format()}.hdf5",
             )
+            file_handler.open_file(out_file)
 
-            for day_num in tqdm(range(pargs.days)):
-                start_t = start_day.get_off(days=day_num)
-                end_t = start_t.get_off(days=1)
-                pd_sat_data = get_obs_coord_between(obs_sat_obj, start_t, end_t, step_t)
+        user_out = (
+            ""
+            if coord_checker is None
+            else f"around {(args.search[0], args.search[1])} at a radius of {args.search[2]} "
+        )
+        print(
+            f"Looking for {obs_sat_obj.sat_name} at "
+            f"{obs_sat_obj.obs_name} from {start_utc} to {final_day} "
+            + user_out
+        )
 
-                if coord_checker is not None:
-                    pd_sat_data = pd_sat_data[coord_checker(pd_sat_data)]
+        for day_num in tqdm(range(pargs.days)):
+            start_t = start_utc.get_off(days=day_num)
+            end_t = start_t.get_off(days=1)
+            pd_sat_data = get_obs_coord_between(obs_sat_obj, start_t, end_t, step_t)
 
-                # Storage step
-                if pargs.ignore_empty and (0 in pd_sat_data.shape):
-                    continue
+            if coord_checker is not None:
+                pd_sat_data = pd_sat_data[coord_checker(pd_sat_data)]
 
-                dataset_name = start_t.iso_format()
-                file_handler.add_dataset(dataset_name, pd_sat_data.to_numpy())
+            # Storage step
+            if pargs.ignore_empty and (0 in pd_sat_data.shape):
+                continue
+
+            dataset_name = start_t.iso_format()
+            file_handler.add_dataset(dataset_name, pd_sat_data.to_numpy())
 
     file_handler.finish_all()
 
@@ -163,37 +163,42 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="search the inputted satellites track for how close each will get to your input."
     )
-    parser.add_argument("days", type=int, help="The number of days to calculate for")
     parser.add_argument(
-        "--search", nargs=4, type=float, help="<RA/Alt> <Dec/Az> <Radius> <Flag>"
+        "coord1", 
+        type=float, 
+        help="RA or Alt depending on <flag>"
     )
     parser.add_argument(
-        "-r",
-        "--reload",
-        action="store_true",
-        help="Re-download the TLE file from the internet",
+        "coord2", 
+        type=float, 
+        help="Dec or Az depending on <flag>"
     )
+
     parser.add_argument(
-        "-sc", "--sat-cache", action="store_true", help="Automatically Cache TLE files"
+        "radius", 
+        type=float, 
+        help="The radius around the coordinate"
     )
+
     parser.add_argument(
-        "-a", "--all", action="store_true", help="Use all satellites from database"
+        "flag", 
+        type=int, 
+        help="0 = RA/Dec; 1 = Alt/Az; 2 = ignore"
     )
+
+    add_common_params(parser)
+
     parser.add_argument(
         "-m", "--merge", action="store_true", help="write all data into a single file"
     )
+
     parser.add_argument(
         "-i",
         "--ignore-empty",
         action="store_true",
         help="If the dataset is empty, it will not be written to the file",
     )
-    parser.add_argument(
-        "--tles",
-        type=Path,
-        nargs="+",
-        help="Specify tle files to use instead of downloading them",
-    )
+
     parser.add_argument(
         "--step", type=int, nargs=1, help="Step size in seconds", deault=1
     )

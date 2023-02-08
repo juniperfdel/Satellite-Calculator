@@ -1,6 +1,8 @@
 from typing import Any, Iterator, Union
+from utils.satellite import ObservatorySatellite, SatellitePosition
 
-from utils import ObservatorySatellite, SatellitePosition, TimeObj, MetaFormatter
+from utils.struct_utils import MetaFormatter
+from utils.time_utils import TimeObj
 
 
 class SingleCulmination(metaclass=MetaFormatter):

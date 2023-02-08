@@ -4,3 +4,5 @@ skyfield_data/*
 .idea/*
 .vs/*
 .vs**
+.idea**
+config/*

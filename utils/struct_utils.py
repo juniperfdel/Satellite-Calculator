@@ -2,16 +2,6 @@ from functools import wraps
 from typing import get_type_hints, Any, Callable, Union
 
 from cached_property import cached_property
-from skyfield.iokit import Loader
-
-
-class SkyfieldConstants:
-    load = Loader("skyfield_data")
-    ephemeris = load("de421.bsp")
-    timescale = load.timescale()
-    earth = ephemeris["earth"]
-    moon = ephemeris["moon"]
-    sun = ephemeris["sun"]
 
 
 def format_fn(in_f):

@@ -3,8 +3,7 @@ from typing import Tuple
 from skyfield.toposlib import GeographicPosition, iers2010
 from skyfield.vectorlib import VectorSum
 
-from utils import SkyfieldConstants
-
+from utils.skyfield_utils import SkyfieldConstants
 
 class Observatories:
     def __init__(self, lat, long, alt, in_name):

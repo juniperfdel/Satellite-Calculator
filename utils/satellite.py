@@ -7,14 +7,12 @@ from skyfield.almanac import dark_twilight_day, fraction_illuminated
 from skyfield.sgp4lib import EarthSatellite
 from skyfield.toposlib import GeographicPosition, iers2010
 
-from utils import (
-    two_object_distance,
-    SkyfieldConstants,
-    TimeObj,
-    MetaFormatter,
-    Observatories,
-)
 
+from utils.math_utils import two_object_distance
+from utils.struct_utils import MetaFormatter
+from utils.observatory import Observatories
+from utils.skyfield_utils import SkyfieldConstants
+from utils.time_utils import TimeObj
 
 class ObservatorySatellite:
     def __init__(self, in_observatory: Observatories, satellite_: EarthSatellite):
