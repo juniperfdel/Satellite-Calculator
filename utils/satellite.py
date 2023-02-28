@@ -55,6 +55,10 @@ class SatellitePosition(metaclass=MetaFormatter):
         return self.time.utc_formatted_str()
 
     @cached_property
+    def sec_since_midnight(self) -> float:
+        return (self.time.get_mjd() - int(self.time.get_mjd())) * 86400
+
+    @cached_property
     def local_time_str(self) -> str:
         return self.time.local_formatted_str()
 

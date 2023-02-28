@@ -38,6 +38,11 @@
     "local_time_str"
   ],
   [
+    "Culmination Time (Seconds)",
+    "culmination",
+    "sec_since_midnight_str"
+  ],
+  [
     "Daytime at Culmination?",
     "culmination",
     "is_daytime_str"
@@ -103,6 +108,11 @@
     "local_time_str"
   ],
   [
+    "Rise Time (Seconds)",
+    "start",
+    "sec_since_midnight_str"
+  ],
+  [
     "Daytime at Rise?",
     "start",
     "is_daytime_str"
@@ -166,6 +176,11 @@
     "Set Time (Local)",
     "end",
     "local_time_str"
+  ],
+  [
+    "Set Time (Seconds)",
+    "end",
+    "sec_since_midnight_str"
   ],
   [
     "Daytime at Set?",

@@ -13,6 +13,7 @@ import numpy as np
 from tzlocal import get_localzone
 
 from skyfield.sgp4lib import EarthSatellite
+from skyfield.toposlib import iers2010
 
 from utils.observatory import Observatories
 from utils.satellite import ObservatorySatellite
@@ -39,7 +40,7 @@ def get_obs_coord_between(
     time_step: TimeDeltaObj,
 ) -> pandas.DataFrame:
     sf_list = get_off_list(start_time, end_time, time_step, 2)
-    rv_df = get_off_list(start_time, end_time, time_step, 4)
+    rv_df = {}
 
     toc_list = in_obs_sat.diff.at(sf_list)
     ra, dec, _ = toc_list.radec()
@@ -50,7 +51,11 @@ def get_obs_coord_between(
     rv_df["alt"] = alt._degrees
     rv_df["az"] = az._degrees
 
-    return rv_df
+    subpts = iers2010.subpoint(in_obs_sat.sat.at(sf_list))
+    rv_df["sub_lat"] = subpts.latitude._degrees
+    rv_df["sub_long"] = subpts.longitude._degrees
+    
+    return pandas.DataFrame(data=rv_df)
 
 
 def find_sat_events(

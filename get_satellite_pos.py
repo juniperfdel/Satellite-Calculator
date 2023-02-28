@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Union
 
 import numpy
+
 from tqdm import tqdm
 
 from utils.arg_utils import add_common_params
