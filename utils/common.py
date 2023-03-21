@@ -40,13 +40,9 @@ def get_obs_coord_between(
     time_step: TimeDeltaObj,
 ) -> pandas.DataFrame:
     sf_list = get_off_list(start_time, end_time, time_step, 2)
-    rv_df = {}
-
     toc_list = in_obs_sat.diff.at(sf_list)
     ra, dec, _ = toc_list.radec()
-    rv_df["ra"] = ra._degrees
-    rv_df["dec"] = dec._degrees
-
+    rv_df = {"ra": ra._degrees, "dec": dec._degrees}
     alt, az, _ = toc_list.altaz()
     rv_df["alt"] = alt._degrees
     rv_df["az"] = az._degrees
@@ -54,7 +50,7 @@ def get_obs_coord_between(
     subpts = iers2010.subpoint(in_obs_sat.sat.at(sf_list))
     rv_df["sub_lat"] = subpts.latitude._degrees
     rv_df["sub_long"] = subpts.longitude._degrees
-    
+
     return pandas.DataFrame(data=rv_df)
 
 
@@ -130,11 +126,10 @@ class ObservatorySatelliteFactory:
         self._make_active_obs()
 
     def _make_start_utc(self):
-        self.start_utc = (
-            TimeObj(datetime.strptime(self.start_date, "%Y-%m-%d"))
-            if bool(self.start_date)
-            else self.today_utc
-        ).get_start_day()
+        try:
+            self.start_utc = TimeObj(datetime.strptime(self.start_date, "%Y-%m-%d")).get_start_day()
+        except ValueError:
+             self.start_utc = self.today_utc.get_start_day()
 
         self.start_utc.set_local_timezone(
             (

@@ -1,6 +1,6 @@
 Please go to the public version of this repo for more up-to-date code https://github.com/gregoryfdel/Satellite-Calculator
 
-# Satellite Calculator (Private) 
+# Satellite Calculator (Private)
 A set of scripts whose goal is to calculate satellite positions given various conditions. This repository is a WIP, future scripts may be added. Pull Requests are welcomed.
 
 
@@ -19,20 +19,37 @@ This file lists the names of the satellites to look for on each line.
 This file specifies the columns to activate for the CSV file and in what order the columns should be in, just list the column headers in a new section.
 
 ### Command Line Inputs
-`python find_satellite_events.py [-h] [-tz SET_TIMEZONE] [-r] [-a ALT] [-c CSV] [-i] [-l] [days]`
+```
+usage: find_satellite_events.py [-h] [-tz TIMEZONE] [-r] [-ca] [-l] [-sd START_DATE] [-il] [--tles TLES [TLES ...]] [-o OUTPUT_FILE] [-a ALT [ALT ...]] [-c CSV] [-i] [-ir] [-is] [days]
 
-All arguments are optional. The one positional argument, `<days>` determines how many days into the future to calculate the culminations for. By default it is 120.
+Calculate Satellite rises, sets, and culminations for observatories found in config/obs_data.yaml
 
-Here is the list of non-positional arguments:
-* `-h`, `--help` will print the help message
-* `-tz`, `--set-timezone` will set the timezone to use in the output with; you can find a list of possible inputs 
-  [here](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones). By default, it uses the one your computer is set to.
-* `-r`, `--reload` will re-download the TLE file from https://celestrak.com/NORAD/elements/active.txt as opposed to using a cached version.
-* `-s`, `--solve` will calculate the satellite positions around culmination based on the next four parameters which are `<start time in seconds before culmination> <duration in seconds> <timestep in seconds> <alt/az flag>` and are all required. If `<alt/az flag>` is set to 1, then alt/az data will be added. Setting any other number will prevent this.
-* `-a`, `--alt` will set the altitude at which the calculations for rising and falling occur; by default it will be 30.
-* `-c`, `--csv` will specify the section in `csv_config.ini` to use. The default is "ALL"
-* `-i`, `--ignore-daytime` if there is a series of columns specifying a datapoint being in daytime or not, will use them to determine if the row is in the day. If it is, the script skips that row.
-* `-l`, `--all` will use all satellites found in the current TLE file
+positional arguments:
+  days                  The number of days to calculate for, default of 120 days
+
+options:
+  -h, --help            show this help message and exit
+  -tz TIMEZONE, --timezone TIMEZONE
+                        The timezone to calculate with respect to, default is your local timezone
+  -r, --reload          Re-download the TLE file from the internet
+  -ca, --cache          Automatically Cache TLE files
+  -l, --all             Use all satellites from database
+  -sd START_DATE, --start-date START_DATE
+                        specify a starting date to begin calculations format is <year>-<month>-<day>
+  -il, --ignore-limit   ignore the 14 day recommended TLE limit on satellite data
+  --tles TLES [TLES ...]
+                        Specify tle files to use instead of downloading them
+  -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                        name of the file to output
+  -a ALT [ALT ...], --alt ALT [ALT ...]
+                        Change the altitude at which the calculations for rising and falling occur
+  -c CSV, --csv CSV     Specifies the section in csv_config.ini to use when building the csv files
+  -i, --ignore-daytime  ignore the data points which occur during the day
+  -ir, --ignore-rise-day
+                        ignore the data points for which the rising occurs during the day
+  -is, --ignore-set-day
+                        ignore the data points for which the setting occurs during the day
+```
 
 ## Get Satellite Positions (get_satellite_pos.py)
 This script calculates the positions of the given satellites wrt the observatories and if those satellites go within a specified radius around a specified coordinate, then those coordinates and times will be written into a `.hdf5` file in `output/sat_pos`. 
@@ -49,44 +66,55 @@ This file is in the `YAML` format, and therefore should be human-readable, speci
 This file lists the names of the satellites to look for on each line.
 
 ### Command Line Inputs
-`python get_satellite_pos.py [-h] [-r] [-a] [-m] [-i] days coordinate_1 coordinate_2 radius flag`
+```
+usage: get_satellite_pos.py [-h] [-tz TIMEZONE] [-r] [-ca] [-l] [-sd START_DATE] [-il] [--tles TLES [TLES ...]] [-o OUTPUT_FILE] [-m] [-i] [--step STEP] coord1 coord2 radius flag [days]
 
-All positional arguments are required.
+search the inputted satellites track for how close each will get to your input.
 
-Here is the list of positional arguments:
-* `days` - The number of days to calculate into the future
-* `Coordinate 1` - The search area's center's first coordinate either RA or Alt depending on `<Flag>`
-* `Coordinate 2` - The search area's center's second coordinate either Dec or Az depending on `<Flag>`
-* `Radius` - The radius of the search area
-* `Flag` - Indicates what type of position is being specified where 0 = RA/Dec and 1 = Alt/Az
+positional arguments:
+  coord1                RA or Alt depending on <flag>
+  coord2                Dec or Az depending on <flag>
+  radius                The radius around the coordinate
+  flag                  0 = RA/Dec; 1 = Alt/Az; 2 = ignore
+  days                  The number of days to calculate for, default of 120 days
 
-Here is the list of non-positional arguments:
-* `-h`, `--help` will print the help message
-* `-r`, `--reload` will re-download the TLE file from https://celestrak.com/NORAD/elements/active.txt as opposed to using a cached version.
-* `-a`, `--all` will use all satellites found in the TLE file
-* `-m`, `--merge` will cause all satellite data to be inside the same file for a given radius, observatory, and date range.
-* `-i`, `--ignore-empty` will prevent empty datasets from being written
-
-## HDF5 Note
-If any script calculates the positions of a satellite, it will place those positions inside an individual table in an HDF5 file. Each table corresponds to a culmination or day (depending on the script). Each table is referenced by a key which is the time of the first element in [ISO-8601 format](https://en.wikipedia.org/wiki/ISO_8601) The [wikipedia page for HDF5](https://en.wikipedia.org/wiki/Hierarchical_Data_Format) has a list of languages which have HDF5 parsers for them already written.
-
+options:
+  -h, --help            show this help message and exit
+  -tz TIMEZONE, --timezone TIMEZONE
+                        The timezone to calculate with respect to, default is your local timezone
+  -r, --reload          Re-download the TLE file from the internet
+  -ca, --cache          Automatically Cache TLE files
+  -l, --all             Use all satellites from database
+  -sd START_DATE, --start-date START_DATE
+                        specify a starting date to begin calculations format is <year>-<month>-<day>
+  -il, --ignore-limit   ignore the 14 day recommended TLE limit on satellite data
+  --tles TLES [TLES ...]
+                        Specify tle files to use instead of downloading them
+  -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                        name of the file to output
+  -m, --merge           write all data into a single file
+  -i, --ignore-empty    If the dataset is empty, it will not be written to the file
+  --step STEP           Step size in seconds
+```
 ## Dependencies
 ### Python Version
-These scripts uses features from the `typing` module which was introduced in python 3.7, so that is the minimum 
-recommended python version required to run these scripts. 
+These scripts uses features from the `typing` module which was introduced in python 3.7, so that is the minimum recommended python version required to run these scripts. 
 ### Formatting
 All scripts have been formatted with [black](https://github.com/psf/black).
 ### Packages
-This repository contains a `pipfile` which is used by the dependency management system [pipenv](https://pipenv.pypa.
-io/en/latest/). Otherwise, here is a list of the packages needed to run these scripts
-* numpy
-* skyfield
-* pandas
-* astropy
-* geopy
-* tqdm
-* pytz
-* tzlocal
-* cached-property
-* pyyaml
-* h5py (If storing satellite positions)
+This repository contains a `pipfile` which is used by the dependency management system [pipenv](https://pipenv.pypa.io/en/latest/). Otherwise, here is a list of the packages needed to run these scripts
+```
+pyyaml
+tqdm
+pytz
+numpy
+geopy
+skyfield
+tzlocal
+h5py
+cached-property
+pandas
+astropy
+dateparser
+h5py
+```
