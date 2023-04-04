@@ -15,7 +15,6 @@ from utils.common import ObservatorySatelliteFactory, get_day_transits
 from utils.transit import DayTransits, SingleCulmination
 
 
-
 class ColumnDefinition:
     """Creates the column name and value getter from a definition"""
 
@@ -24,7 +23,7 @@ class ColumnDefinition:
         self.attr_getter = attrgetter(".".join(column_definition[1:]))
         self.index = -1
 
-    def get_ini_key(self):
+    def get_ini_key(self) -> str:
         return self.column_name.lower()
 
     def get_value(self, in_transit_data: SingleCulmination):
@@ -49,7 +48,7 @@ def write_to_csv_file(
     csv_config_parser = configparser.ConfigParser(allow_no_value=True)
     csv_config_parser.read_file(open(os.path.join("config", "csv_config.ini")))
 
-    good_col_defs = []
+    good_col_defs: list[ColumnDefinition] = []
     for option_ind, option in enumerate(csv_config_parser.options(in_config_section)):
         for csv_col_def in csv_col_defs:
             if csv_col_def.get_ini_key() == option:
@@ -90,7 +89,7 @@ def main(pargs: argparse.Namespace) -> None:
         pargs.all,
         pargs.start_date,
         pargs.ignore_limit,
-        pargs.tles
+        pargs.tles,
     )
 
     start_utc = obs_sat_fact.start_utc
@@ -111,7 +110,7 @@ def main(pargs: argparse.Namespace) -> None:
 
                 day_transits = get_day_transits(sat_obs, day_start, day_end, alt_lim)
                 culmination_data.extend(day_transits)
-        
+
     write_to_csv_file(
         f"{pargs.output_file}.csv",
         pargs.csv,
@@ -166,8 +165,6 @@ if __name__ == "__main__":
         action="store_true",
         help="ignore the data points for which the setting occurs during the day",
     )
-
-
 
     args = parser.parse_args()
 

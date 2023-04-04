@@ -233,7 +233,7 @@ def get_off_list(
             time_start=t_start.ap, time_delta=ap_step, n_samples=n_steps
         )
         return ap_ts if final_type == 3 else ap_ts.to_pandas()
-    
+
     num_list = np.arange(t_start.np, t_end.np + t_step.np, t_step.np)
     if final_type == 0:
         return num_list

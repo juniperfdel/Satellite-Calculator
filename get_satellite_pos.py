@@ -55,9 +55,13 @@ class HDF5FileHandler:
         if not self.is_working:
             raise HDF5FileNotSetup
         if self.cur_group is None:
-            new_ds: h5py.Dataset = self.file_cache[self.cur_file].create_dataset(dataset_name, data=data_input)
+            new_ds: h5py.Dataset = self.file_cache[self.cur_file].create_dataset(
+                dataset_name, data=data_input
+            )
         else:
-            new_ds: h5py.Dataset = self.cur_group.create_dataset(dataset_name, data=data_input)
+            new_ds: h5py.Dataset = self.cur_group.create_dataset(
+                dataset_name, data=data_input
+            )
         for k, v in iattrs.items():
             new_ds.attrs[k] = v
 
@@ -94,9 +98,9 @@ def main(pargs: argparse.Namespace) -> None:
         pargs.all,
         pargs.start_date,
         pargs.ignore_limit,
-        pargs.tles
+        pargs.tles,
     )
-    
+
     start_utc = obs_sat_fact.start_utc
     final_day = start_utc.get_off(days=pargs.days)
 
@@ -105,10 +109,7 @@ def main(pargs: argparse.Namespace) -> None:
 
     if args.flag < 2:
         coord_checker = make_coord_check(
-            args.radius, 
-            args.coord1, 
-            args.coord2, 
-            bool(args.flag)
+            args.radius, args.coord1, args.coord2, bool(args.flag)
         )
     else:
         coord_checker = None
@@ -123,9 +124,7 @@ def main(pargs: argparse.Namespace) -> None:
             if coord_checker is not None:
                 file_handler.add_group(str(numpy.around(args.search[2], 3)))
         else:
-            rad_str = (
-                "" if coord_checker is None else str(int(args.search[2] * 100))
-            )
+            rad_str = "" if coord_checker is None else str(int(args.search[2] * 100))
             out_file = os.path.join(
                 "output",
                 "sat_pos",
@@ -142,8 +141,7 @@ def main(pargs: argparse.Namespace) -> None:
         )
         print(
             f"Looking for {obs_sat_obj.sat_name} at "
-            f"{obs_sat_obj.obs_name} from {start_utc} to {final_day} "
-            + user_out
+            f"{obs_sat_obj.obs_name} from {start_utc} to {final_day} " + user_out
         )
 
         for day_num in tqdm(range(pargs.days)):
@@ -160,10 +158,10 @@ def main(pargs: argparse.Namespace) -> None:
 
             dataset_name = start_t.iso_format()
             file_handler.add_dataset(
-                dataset_name, 
+                dataset_name,
                 pd_sat_data.to_numpy(),
-                column_names = numpy.array(pd_sat_data.columns, dtype='S'),
-                step_size_sec = step_size,
+                column_names=numpy.array(pd_sat_data.columns, dtype="S"),
+                step_size_sec=step_size,
             )
 
     file_handler.finish_all()
@@ -173,28 +171,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="search the inputted satellites track for how close each will get to your input."
     )
-    parser.add_argument(
-        "coord1", 
-        type=float, 
-        help="RA or Alt depending on <flag>"
-    )
-    parser.add_argument(
-        "coord2", 
-        type=float, 
-        help="Dec or Az depending on <flag>"
-    )
+    parser.add_argument("coord1", type=float, help="RA or Alt depending on <flag>")
+    parser.add_argument("coord2", type=float, help="Dec or Az depending on <flag>")
 
-    parser.add_argument(
-        "radius", 
-        type=float, 
-        help="The radius around the coordinate"
-    )
+    parser.add_argument("radius", type=float, help="The radius around the coordinate")
 
-    parser.add_argument(
-        "flag", 
-        type=int, 
-        help="0 = RA/Dec; 1 = Alt/Az; 2 = ignore"
-    )
+    parser.add_argument("flag", type=int, help="0 = RA/Dec; 1 = Alt/Az; 2 = ignore")
 
     add_common_params(parser, "calculated_satellite_data")
 
@@ -209,12 +191,7 @@ if __name__ == "__main__":
         help="If the dataset is empty, it will not be written to the file",
     )
 
-    parser.add_argument(
-        "--step", 
-        type=int, 
-        default=1,
-        help="Step size in seconds"
-    )
+    parser.add_argument("--step", type=int, default=1, help="Step size in seconds")
 
     args = parser.parse_args()
 

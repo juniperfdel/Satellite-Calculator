@@ -1,14 +1,24 @@
+from __future__ import annotations
+
 from typing import Any, Iterator, Union
 from utils.satellite import ObservatorySatellite, SatellitePosition
 
 from utils.struct_utils import MetaFormatter
 from utils.time_utils import TimeObj
 
+PossibleSatPos = Union[SatellitePosition, None]
+
 
 class SingleCulmination(metaclass=MetaFormatter):
     """Helper class returned by DayTransits Iterator which stores information about a single culmination"""
 
-    def __init__(self, parent_, start_, culmination_, end_):
+    def __init__(
+        self,
+        parent_: DayTransits,
+        start_: PossibleSatPos,
+        culmination_: SatellitePosition,
+        end_: PossibleSatPos,
+    ):
         self.parent = parent_
         self.start = start_
         self.culmination = culmination_
@@ -26,7 +36,7 @@ class SingleCulmination(metaclass=MetaFormatter):
     def threshold(self) -> float:
         return self.parent.threshold
 
-PossibleSatPos = Union[SatellitePosition, None]
+
 class DayTransits:
     """Helper class which stores the culmination times and associated information"""
 
@@ -34,7 +44,7 @@ class DayTransits:
         self.obs_sat = in_obs_sat
         self.threshold = in_threshold
         self._start: PossibleSatPos = None
-        self.culminations = []
+        self.culminations: list[SatellitePosition] = []
         self._end: PossibleSatPos = None
 
     def __iter__(self) -> Iterator[SingleCulmination]:

@@ -2,6 +2,7 @@ import argparse
 
 from pathlib import Path
 
+
 def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
     parser.add_argument(
         "days",
@@ -18,7 +19,7 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
         default="local",
         help="The timezone to calculate with respect to, default is your local timezone",
     )
-    
+
     parser.add_argument(
         "-r",
         "--reload",
@@ -39,14 +40,14 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
         "--start-date",
         type=str,
         default="today",
-        help="specify a starting date to begin calculations format is <year>-<month>-<day>"
+        help="specify a starting date to begin calculations format is <year>-<month>-<day>",
     )
 
     parser.add_argument(
         "-il",
         "--ignore-limit",
         action="store_true",
-        help="ignore the 14 day recommended TLE limit on satellite data"
+        help="ignore the 14 day recommended TLE limit on satellite data",
     )
 
     parser.add_argument(
@@ -57,9 +58,9 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
     )
 
     parser.add_argument(
-        "-o", 
+        "-o",
         "--output-file",
-        type=str, 
+        type=str,
         help="name of the file to output",
-        default=default_outfile
+        default=default_outfile,
     )

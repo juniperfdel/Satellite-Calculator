@@ -236,5 +236,38 @@
     "Moon Fraction (At Set)",
     "end",
     "moon_fraction_str"
+  ],
+  [
+    "TLE Model Epoch",
+    "parent",
+    "obs_sat",
+    "sat_epoch_str"
+  ],
+  [
+    "TLE Model Modified Julian Date Epoch",
+    "parent",
+    "obs_sat",
+    "sat_epoch_mjd_str"
+  ],
+  [
+    "TLE Model Mean Motion",
+    "parent",
+    "obs_sat",
+    "sat_mean_motion_str"
+  ],
+  [
+    "Culmination Time and TLE Model Epoch Difference in Days",
+    "culmination",
+    "sat_epoch_time_diff_days_str"
+  ],
+  [
+    "Rise Time and TLE Model Epoch Difference in Days",
+    "start",
+    "sat_epoch_time_diff_days_str"
+  ],
+  [
+    "Set Time and TLE Model Epoch Difference in Days",
+    "end",
+    "sat_epoch_time_diff_days_str"
   ]
 ]

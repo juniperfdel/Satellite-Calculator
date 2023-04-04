@@ -5,8 +5,9 @@ from skyfield.vectorlib import VectorSum
 
 from utils.skyfield_utils import SkyfieldConstants
 
+
 class Observatories:
-    def __init__(self, lat, long, alt, in_name):
+    def __init__(self, lat: float, long: float, alt: float, in_name: str):
         self.name = in_name
         self.lat = lat
         self.long = long
