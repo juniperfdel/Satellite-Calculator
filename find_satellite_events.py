@@ -99,8 +99,9 @@ def main(pargs: argparse.Namespace) -> None:
     culmination_data = []
     for sat_obs in obs_sat_fact:
         print(
-            f"Looking for {sat_obs.sat_name} at {sat_obs.obs_name} "
-            f"from {start_utc} to {final_day}"
+            f"Looking for {sat_obs.sat_name} at "
+            f"{sat_obs.obs_name} from {start_utc} to {final_day} " 
+            f" with a TLE model whose epoch is {sat_obs.sat_epoch_str}"
         )
 
         for day_num in tqdm(range(pargs.days)):
@@ -133,7 +134,7 @@ if __name__ == "__main__":
         "--alt",
         nargs="+",
         type=float,
-        default=30.0,
+        default=[30.0],
         help="Change the altitude at which the calculations for rising and falling occur",
     )
 

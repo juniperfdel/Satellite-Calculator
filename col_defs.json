@@ -1,5 +1,11 @@
 [
   [
+    "Observatory Name",
+    "start",
+    "obs",
+    "name"
+  ],
+  [
     "Observatory Latitude",
     "start",
     "obs_lat_str"

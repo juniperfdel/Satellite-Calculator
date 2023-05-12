@@ -107,45 +107,41 @@ def main(pargs: argparse.Namespace) -> None:
     step_size = int(pargs.step) if (pargs.step is not None) and (pargs.step > 1) else 1
     step_t = TimeDeltaObj(seconds=step_size)
 
-    if args.flag < 2:
+    if pargs.flag < 2:
         coord_checker = make_coord_check(
-            args.radius, args.coord1, args.coord2, bool(args.flag)
+            pargs.radius, pargs.coord1, pargs.coord2, bool(pargs.flag)
         )
     else:
         coord_checker = None
 
     file_handler = HDF5FileHandler()
     for obs_sat_obj in obs_sat_fact:
-        if pargs.merge:
-            out_file = os.path.join("output", f"{pargs.output_file}.hdf5")
-            file_handler.open_file(out_file)
-            file_handler.add_group(obs_sat_obj.obs_name)
-            file_handler.add_group(obs_sat_obj.sat_name)
-            if coord_checker is not None:
-                file_handler.add_group(str(numpy.around(args.search[2], 3)))
-        else:
-            rad_str = "" if coord_checker is None else str(int(args.search[2] * 100))
-            out_file = os.path.join(
-                "output",
-                "sat_pos",
-                f"{obs_sat_obj.sat_name}_{obs_sat_obj.obs_name}_"
-                f"{rad_str}_{start_utc.get_file_format()}-"
-                f"{final_day.get_file_format()}.hdf5",
-            )
-            file_handler.open_file(out_file)
+        out_file = os.path.join("output", f"{pargs.output_file}.hdf5")
+        file_handler.open_file(out_file)
+        file_handler.add_group(obs_sat_obj.sat_epoch_obj.iso_format())
+        file_handler.add_group(obs_sat_obj.obs_name)
+        file_handler.add_group(obs_sat_obj.sat_name)
+        if coord_checker is not None:
+            file_handler.add_group(str(numpy.around(pargs.search[2], 3)))
 
         user_out = (
             ""
             if coord_checker is None
-            else f"around {(args.search[0], args.search[1])} at a radius of {args.search[2]} "
+            else f"around {(pargs.search[0], pargs.search[1])} at a radius of {args.search[2]} "
         )
         print(
             f"Looking for {obs_sat_obj.sat_name} at "
-            f"{obs_sat_obj.obs_name} from {start_utc} to {final_day} " + user_out
+            f"{obs_sat_obj.obs_name} from {start_utc} to {final_day} " + user_out +
+            f" with a TLE model whose epoch is {obs_sat_obj.sat_epoch_str}"
         )
 
         for day_num in tqdm(range(pargs.days)):
             start_t = start_utc.get_off(days=day_num)
+            days_since_epoch = (start_t - obs_sat_obj.sat_epoch_obj).total_days()
+
+            if (pargs.force_tle_limit is not None) and ((days_since_epoch < 0) or (pargs.force_tle_limit < days_since_epoch)):
+                continue
+
             end_t = start_t.get_off(days=1)
             pd_sat_data = get_obs_coord_between(obs_sat_obj, start_t, end_t, step_t)
 
@@ -181,10 +177,6 @@ if __name__ == "__main__":
     add_common_params(parser, "calculated_satellite_data")
 
     parser.add_argument(
-        "-m", "--merge", action="store_true", help="write all data into a single file"
-    )
-
-    parser.add_argument(
         "-i",
         "--ignore-empty",
         action="store_true",
@@ -192,6 +184,8 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("--step", type=int, default=1, help="Step size in seconds")
+
+    parser.add_argument("--force-tle-limit", type=float, help="Don't calculate past this amount of days from the TLE epoch")
 
     args = parser.parse_args()
 

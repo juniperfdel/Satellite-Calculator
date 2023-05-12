@@ -28,6 +28,10 @@ class ObservatorySatellite(metaclass=MetaFormatter):
         return SatellitePosition(self, in_time)
 
     @property
+    def sat_epoch_obj(self) -> TimeObj:
+        return TimeObj(self.sat.epoch)
+
+    @property
     def sat_epoch_str(self) -> str:
         return TimeObj(self.sat.epoch).utc_formatted_str()
 

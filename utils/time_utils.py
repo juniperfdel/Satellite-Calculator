@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional, Any, Union, List
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas
@@ -9,7 +10,6 @@ from astropy.timeseries import TimeSeries as AstropyTimeSeries
 from numpy.typing import ArrayLike
 from pandas import Timedelta as PandasTimeDelta
 from pandas import Timestamp as PandasTimeStamp
-from pytz import timezone
 from skyfield.timelib import Time as SkyfieldTime
 
 from utils.skyfield_utils import SkyfieldConstants
@@ -17,22 +17,14 @@ from utils.skyfield_utils import SkyfieldConstants
 
 def timezone_converter(
     input_dt: datetime,
-    current_tz: Optional[str] = "UTC",
-    target_tz: Optional[str] = "UTC",
+    current_tz: str = "UTC",
+    target_tz: str = "UTC",
 ) -> datetime:
-    current_tz = timezone(current_tz)
-    target_tz = timezone(target_tz)
-    if (getattr(input_dt, "tzinfo", None) is not None) and (
-        input_dt.tzinfo.utcoffset(input_dt) is not None
-    ):
-        target_dt = input_dt.astimezone(target_tz)
-    else:
-        target_dt = current_tz.localize(input_dt).astimezone(target_tz)
-    return target_tz.normalize(target_dt)
+    return input_dt.replace(tzinfo=ZoneInfo(current_tz)).astimezone(ZoneInfo(target_tz))
 
 
 class TimeObj:
-    def __init__(self, input_time: Any, in_local_tz="UTC") -> None:
+    def __init__(self, input_time: Any, in_local_tz: str = "UTC") -> None:
         """
         Create a custom time object which is used to switch between
         inputs to the various packages used, as well as simplify
@@ -41,7 +33,7 @@ class TimeObj:
         :param input_time:
         """
         self.dt = None
-        self.local_tz = in_local_tz
+        self.local_tz: str = in_local_tz
 
         if isinstance(input_time, TimeObj):
             self.dt = input_time.dt
@@ -96,7 +88,7 @@ class TimeObj:
     def __eq__(self, other) -> bool:
         return self.dt == other.dt
 
-    def set_local_timezone(self, in_tz):
+    def set_local_timezone(self, in_tz: str):
         self.local_tz = in_tz
 
     def get_start_day(self):
@@ -184,6 +176,9 @@ class TimeDeltaObj:
 
     def total_seconds(self) -> float:
         return self.dt.total_seconds()
+
+    def total_days(self) -> float:
+        return self.dt.total_seconds() / 86400
 
     def get_datetime(self) -> timedelta:
         return self.dt
