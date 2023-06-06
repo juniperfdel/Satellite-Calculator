@@ -1,6 +1,4 @@
-Please go to the public version of this repo for more up-to-date code https://github.com/gregoryfdel/Satellite-Calculator
-
-# Satellite Calculator (Private)
+# Satellite Calculator 
 A set of scripts whose goal is to calculate satellite positions given various conditions. This repository is a WIP, future scripts may be added. Pull Requests are welcomed.
 
 
@@ -112,7 +110,6 @@ geopy
 skyfield
 tzlocal
 h5py
-cached-property
 pandas
 astropy
 dateparser
