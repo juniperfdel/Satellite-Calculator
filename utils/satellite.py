@@ -169,7 +169,7 @@ class SatellitePosition(metaclass=MetaFormatter):
 
     @property
     def is_daytime(self) -> bool:
-        return self.twilight_checker(self.time.sf) > 1
+        return self.twilight_checker(self.time.sf) > 0
 
     @property
     def is_daytime_str(self) -> str:
