@@ -90,7 +90,7 @@ def main(pargs: argparse.Namespace) -> None:
         cache_sat=pargs.cache,
         use_all=pargs.all,
         start_date=pargs.start_date,
-        end_days=pargs.days
+        end_days=pargs.days,
         ignore_limit=pargs.ignore_limit,
         tles=pargs.tles,
     )
