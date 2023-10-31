@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 from typing import Optional, Any, Union, List
 from zoneinfo import ZoneInfo
@@ -70,22 +72,25 @@ class TimeObj:
     def __str__(self) -> str:
         return str(self.dt)
 
-    def __sub__(self, other):
+    def __add__(self, other: "TimeDeltaObj") -> TimeObj:
+        return TimeObj(self.dt + other.dt)
+
+    def __sub__(self, other: TimeObj) -> "TimeDeltaObj":
         return TimeDeltaObj(self.dt - other.dt)
 
-    def __ge__(self, other) -> bool:
+    def __ge__(self, other: TimeObj) -> bool:
         return self.dt >= other.dt
 
-    def __gt__(self, other) -> bool:
+    def __gt__(self, other: TimeObj) -> bool:
         return self.dt > other.dt
 
-    def __lt__(self, other) -> bool:
+    def __lt__(self, other: TimeObj) -> bool:
         return self.dt < other.dt
 
-    def __le__(self, other) -> bool:
+    def __le__(self, other: TimeObj) -> bool:
         return self.dt <= other.dt
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: TimeObj) -> bool:
         return self.dt == other.dt
 
     def set_local_timezone(self, in_tz: str):
@@ -196,7 +201,12 @@ class TimeDeltaObj:
 def get_off_list(
     t_start: TimeObj, t_end: TimeObj, t_step: TimeDeltaObj, final_type: int = 0
 ) -> Union[
-    AstropyTimeSeries, ArrayLike, List[datetime], SkyfieldTime, pandas.DataFrame
+    AstropyTimeSeries,
+    ArrayLike,
+    list[datetime],
+    SkyfieldTime,
+    pandas.DataFrame,
+    TimeObj,
 ]:
     """
     Create a list of times for use by different astronomical packages
@@ -210,6 +220,8 @@ def get_off_list(
     astropy Time object if final_type=3
 
     pandas DataFrame if final_type=4
+
+    TimeObj if final_type=5
 
     Parameters
     ----------
@@ -240,8 +252,11 @@ def get_off_list(
     if final_type == 2:
         return SkyfieldConstants.timescale.from_datetimes(dt_list)
 
+    if final_type == 5:
+        return [TimeObj(x) for x in dt_list]
+
     raise TypeError(
-        "Please select a type 0 (numpy.datetime64), 1 (datetime), 2 (skyfield.timelib.Time), 3 (astropy.time.Time), or 4 (pandas.DataFrame)! "
+        "Please select a type 0 (numpy.datetime64), 1 (datetime), 2 (skyfield.timelib.Time), 3 (astropy.time.Time), 4 (pandas.DataFrame), or 5 (TimeObj)! "
     )
 
 

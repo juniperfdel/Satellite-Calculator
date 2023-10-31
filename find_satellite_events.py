@@ -1,5 +1,6 @@
 import argparse
 import configparser
+from itertools import pairwise
 import json
 import os
 
@@ -11,7 +12,8 @@ from typing import List
 from tqdm import tqdm
 
 from utils.arg_utils import add_common_params
-from utils.common import ObservatorySatelliteFactory, get_day_transits
+from utils.common import ObservatorySatelliteFactory, get_day_transits, make_bounded_time_list
+from utils.time_utils import TimeDeltaObj
 from utils.transit import DayTransits, SingleCulmination
 
 
@@ -83,32 +85,34 @@ def write_to_csv_file(
 
 def main(pargs: argparse.Namespace) -> None:
     obs_sat_fact = ObservatorySatelliteFactory(
-        pargs.timezone,
-        pargs.reload,
-        pargs.cache,
-        pargs.all,
-        pargs.start_date,
-        pargs.ignore_limit,
-        pargs.tles,
+        local_tz=pargs.timezone,
+        reload_sat=pargs.reload,
+        cache_sat=pargs.cache,
+        use_all=pargs.all,
+        start_date=pargs.start_date,
+        end_days=pargs.days
+        ignore_limit=pargs.ignore_limit,
+        tles=pargs.tles,
     )
-
-    start_utc = obs_sat_fact.start_utc
-    final_day = start_utc.get_off(days=pargs.days)
     print(f"Calculating culminations of {len(obs_sat_fact.active_sats)} satellites")
 
+    day_step = TimeDeltaObj(days=1)
+    
     culmination_data = []
-    for sat_obs in obs_sat_fact:
+    for start_utc, days_to_calc, sat_obs in obs_sat_fact:
+        final_day = start_utc + TimeDeltaObj(days=days_to_calc)
+        start_end_pairs = list(
+            pairwise(make_bounded_time_list(start_utc, final_day, day_step))
+        )
+
         print(
             f"Looking for {sat_obs.sat_name} at "
             f"{sat_obs.obs_name} from {start_utc} to {final_day} " 
             f" with a TLE model whose epoch is {sat_obs.sat_epoch_str}"
         )
 
-        for day_num in tqdm(range(pargs.days)):
+        for day_start, day_end in tqdm(start_end_pairs):
             for alt_lim in pargs.alt:
-                day_start = start_utc.get_off(days=day_num).get_start_day()
-                day_end = day_start.get_off(days=1)
-
                 day_transits = get_day_transits(sat_obs, day_start, day_end, alt_lim)
                 culmination_data.extend(day_transits)
 
