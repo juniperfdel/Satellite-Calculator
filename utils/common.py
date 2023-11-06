@@ -315,6 +315,8 @@ class ObservatorySatelliteFactory:
                 sat_list = sorted(sat_list, key=lambda x: x.model.jdsatepoch)
 
                 start_dates = [TimeObj(x.epoch) for x in sat_list]
+                start_dates = [x for x in start_dates if x < self.end_utc]
+                
                 dates_diff = numpy.diff(
                     numpy.array([x.get_mjd() for x in start_dates])
                 ).tolist()
