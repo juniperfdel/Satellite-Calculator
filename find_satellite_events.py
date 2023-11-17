@@ -98,20 +98,22 @@ def main(pargs: argparse.Namespace) -> None:
 
     day_step = TimeDeltaObj(days=1)
     
+    obs_sat_fact_bar = tqdm(obs_sat_fact, position=0)
+
     culmination_data = []
-    for start_utc, days_to_calc, sat_obs in obs_sat_fact:
+    for start_utc, days_to_calc, sat_obs in obs_sat_fact_bar:
         final_day = start_utc + TimeDeltaObj(days=days_to_calc)
         start_end_pairs = list(
             pairwise(make_bounded_time_list(start_utc, final_day, day_step))
         )
-
-        print(
-            f"Looking for {sat_obs.sat_name} at "
-            f"{sat_obs.obs_name} from {start_utc} to {final_day} " 
-            f" with a TLE model whose epoch is {sat_obs.sat_epoch_str}"
+        
+        obs_sat_fact_bar.set_description(
+            f"{sat_obs.sat_name};{sat_obs.obs_name};"
+            f"{start_utc.get_compact_fmt()}--{final_day.get_compact_fmt()}" 
+            f"Ep@{sat_obs.sat_epoch_str}"
         )
 
-        for day_start, day_end in tqdm(start_end_pairs):
+        for day_start, day_end in tqdm(start_end_pairs, position=1, leave=False):
             for alt_lim in pargs.alt:
                 day_transits = get_day_transits(sat_obs, day_start, day_end, alt_lim)
                 culmination_data.extend(day_transits)

@@ -36,6 +36,10 @@ class ObservatorySatellite(metaclass=MetaFormatter):
         return TimeObj(self.sat.epoch).utc_formatted_str()
 
     @property
+    def compact_sat_epoch_str(self) -> str:
+        return TimeObj(self.sat.epoch).get_compact_fmt()
+
+    @property
     def sat_epoch_mjd(self) -> float:
         return (self.sat.model.jdsatepoch - 2400000.5)
 

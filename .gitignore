@@ -6,3 +6,4 @@ skyfield_data/*
 .vs**
 .idea**
 config/*
+run_sat_search.py

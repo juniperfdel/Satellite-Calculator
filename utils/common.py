@@ -147,6 +147,8 @@ class ObservatorySatelliteFactory:
         self.active_sats: list[EarthSatellite] = []
         self.active_observatories: list[Observatories] = []
 
+        self._sat_list: Optional[(list[tuple[TimeObj, float, EarthSatellite]] | list[EarthSatellite])] = None
+
         self._make_start_utc()
         self._make_active_sats()
         self._make_active_obs()
@@ -304,7 +306,9 @@ class ObservatorySatelliteFactory:
                 )
             )
 
-    def __iter__(self) -> Iterator[tuple[TimeObj, float, ObservatorySatellite]]:
+    def _make_sat_list(self):
+        if self._sat_list is not None:
+            return
         if self.chain_tles:
             organized_sats: defaultdict[str, list[EarthSatellite]] = defaultdict(list)
             for sat in self.active_sats:
@@ -322,7 +326,19 @@ class ObservatorySatelliteFactory:
                 ).tolist()
                 dates_diff.append((self.end_utc - start_dates[-1]).total_days())
                 chained_sats.extend(zip(start_dates, dates_diff, sat_list))
+            self._sat_list = chained_sats
+        else:
+            self._sat_list = self.active_sats
 
+
+    def __len__(self) -> int:
+        self._make_sat_list()
+        return len(self._sat_list) * len(self.active_observatories)
+
+    def __iter__(self) -> Iterator[tuple[TimeObj, float, ObservatorySatellite]]:
+        self._make_sat_list()
+        
+        if self.chain_tles:
             return chain.from_iterable(
                 (
                     (
@@ -331,7 +347,7 @@ class ObservatorySatelliteFactory:
                             calc_day,
                             ObservatorySatellite(current_obs, satellite),
                         )
-                        for start_day, calc_day, satellite in chained_sats
+                        for start_day, calc_day, satellite in self._sat_list
                     )
                     for current_obs in self.active_observatories
                 )
@@ -345,7 +361,7 @@ class ObservatorySatelliteFactory:
                             self.end_days,
                             ObservatorySatellite(current_obs, satellite),
                         )
-                        for satellite in self.active_sats
+                        for satellite in self._sat_list
                     )
                     for current_obs in self.active_observatories
                 )

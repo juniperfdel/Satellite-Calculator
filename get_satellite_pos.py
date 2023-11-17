@@ -48,6 +48,9 @@ class HDF5FileHandler:
         if file_name in self.file_cache and self.file_cache[file_name]:
             return
         else:
+            fpath = Path(file_name)
+            if fpath.exists():
+                fpath.unlink()
             self.file_cache[file_name] = h5py.File(file_name, mode="a")
 
     def add_group(self, group_name: str):
@@ -125,7 +128,9 @@ def main(pargs: argparse.Namespace) -> None:
 
     file_handler = HDF5FileHandler()
 
-    for start_utc, days_to_calc, obs_sat_obj in obs_sat_fact:
+    obs_sat_fact_bar = tqdm(obs_sat_fact, position=0)
+
+    for start_utc, days_to_calc, obs_sat_obj in obs_sat_fact_bar:
         final_day = start_utc + TimeDeltaObj(days=days_to_calc)
         start_end_pairs = list(
             pairwise(make_bounded_time_list(start_utc, final_day, day_step))
@@ -142,16 +147,16 @@ def main(pargs: argparse.Namespace) -> None:
         user_out = (
             ""
             if coord_checker is None
-            else f"around {(pargs.search[0], pargs.search[1])} at a radius of {args.search[2]} "
+            else f"{(pargs.search[0], pargs.search[1])};{args.search[2]};"
         )
-        print(
-            f"Looking for {obs_sat_obj.sat_name} at "
-            f"{obs_sat_obj.obs_name} from {start_utc} to {final_day} "
+        obs_sat_fact_bar.set_description(
+            f"{obs_sat_obj.sat_name};{obs_sat_obj.obs_name};"
+            f"{start_utc.get_compact_fmt()}--{final_day.get_compact_fmt()};"
             + user_out
-            + f" with a TLE model whose epoch is {obs_sat_obj.sat_epoch_str}"
+            + f"Ep@{obs_sat_obj.compact_sat_epoch_str}"
         )
 
-        for start_t, end_t in tqdm(start_end_pairs):
+        for start_t, end_t in tqdm(start_end_pairs, position=1, leave=False):
             days_since_epoch = (start_t - obs_sat_obj.sat_epoch_obj).total_days()
 
             if (pargs.force_tle_limit is not None) and (

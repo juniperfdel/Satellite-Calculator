@@ -132,6 +132,9 @@ class TimeObj:
     def get_file_format(self) -> str:
         return self.dt.strftime("%Y%m%d")
 
+    def get_compact_fmt(self) -> str:
+        return self.dt.strftime("%Y%m%d %H:%M")
+
     def get_jd(self) -> float:
         return self.ap.jd
 
