@@ -135,7 +135,7 @@ class ObservatorySatelliteFactory:
         self.end_days: float = end_days
         self.end_utc: Optional[TimeObj] = None
         self.tles: list[str] = (
-            ["https://celestrak.com/NORAD/elements/active.txt"]
+            ["https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"]
             if tles is None
             else tles
         )

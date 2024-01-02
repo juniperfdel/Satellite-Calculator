@@ -109,7 +109,7 @@ def main(pargs: argparse.Namespace) -> None:
         
         obs_sat_fact_bar.set_description(
             f"{sat_obs.sat_name};{sat_obs.obs_name};"
-            f"{start_utc.get_compact_fmt()}--{final_day.get_compact_fmt()}" 
+            f"{start_utc.get_compact_fmt()}--{final_day.get_compact_fmt()};" 
             f"Ep@{sat_obs.sat_epoch_str}"
         )
 
