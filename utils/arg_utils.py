@@ -16,8 +16,8 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
         "-tz",
         "--timezone",
         type=str,
-        default="local",
-        help="The timezone to calculate with respect to, default is your local timezone",
+        default="UTC",
+        help="The timezone to calculate with respect to, default is UTC",
     )
 
     parser.add_argument(

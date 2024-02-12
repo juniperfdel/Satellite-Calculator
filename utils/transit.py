@@ -80,7 +80,7 @@ class DayTransits:
     def add(self, in_time: Any) -> int:
         if self.start is None or self.end is None:
             return -1
-        in_time = TimeObj(in_time, in_local_tz=self.start.time.local_tz)
+        in_time = TimeObj(in_time, local_tz=self.start.time.local_tz)
         if self.start.time <= in_time <= self.end.time:
             self.culminations.append(self.obs_sat.at(in_time))
             self.culminations.sort(key=lambda x: x.time)

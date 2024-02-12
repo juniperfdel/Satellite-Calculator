@@ -90,12 +90,12 @@ def find_sat_events(
     for time, flag in events_zipped:
         if flag == 0:
             new_transit = DayTransits(in_obs_sat, limit_alt)
-            new_transit.start = TimeObj(time, in_local_tz=in_start.local_tz)
+            new_transit.start = TimeObj(time, local_tz=in_start.local_tz)
             rv_transits.append(new_transit)
 
     for time, flag in events_zipped:
         if flag == 2:
-            test_time_obj = TimeObj(time, in_local_tz=in_start.local_tz)
+            test_time_obj = TimeObj(time, local_tz=in_start.local_tz)
             test_i = 0
             while test_i < len(rv_transits):
                 if (
@@ -118,7 +118,7 @@ def find_sat_events(
 class ObservatorySatelliteFactory:
     def __init__(
         self,
-        local_tz: str = "local",
+        local_tz: str = "UTC",
         reload_sat: bool = True,
         cache_sat: bool = False,
         use_all: bool = False,
@@ -129,7 +129,7 @@ class ObservatorySatelliteFactory:
         chain_tles: bool = False,
     ):
         self.start_date: str = start_date
-        self.local_tz: str = local_tz
+        self.local_tz: str = get_localzone().zone if local_tz == "local" else local_tz
         self.today_utc: TimeObj = today()
         self.start_utc: Optional[TimeObj] = None
         self.end_days: float = end_days
@@ -161,10 +161,7 @@ class ObservatorySatelliteFactory:
         except ValueError:
             self.start_utc = self.today_utc.get_start_day()
 
-        self.start_utc.set_local_timezone(
-            get_localzone().zone if self.local_tz == "local" else self.local_tz
-        )
-
+        self.start_utc.local_tz = self.local_tz
         self.end_utc = self.start_utc + TimeDeltaObj(days=self.end_days)
 
     def _make_active_sats(self):
@@ -318,9 +315,8 @@ class ObservatorySatelliteFactory:
             for sat_list in organized_sats.values():
                 sat_list = sorted(sat_list, key=lambda x: x.model.jdsatepoch)
 
-                start_dates = [TimeObj(x.epoch) for x in sat_list]
+                start_dates = [TimeObj(x.epoch, self.local_tz) for x in sat_list]
                 start_dates = [x for x in start_dates if x < self.end_utc]
-                
                 dates_diff = numpy.diff(
                     numpy.array([x.get_mjd() for x in start_dates])
                 ).tolist()

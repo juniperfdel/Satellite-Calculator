@@ -26,7 +26,7 @@ def timezone_converter(
 
 
 class TimeObj:
-    def __init__(self, input_time: Any, in_local_tz: str = "UTC") -> None:
+    def __init__(self, input_time: Any, local_tz: str = "UTC") -> None:
         """
         Create a custom time object which is used to switch between
         inputs to the various packages used, as well as simplify
@@ -35,7 +35,7 @@ class TimeObj:
         :param input_time:
         """
         self.dt = None
-        self.local_tz: str = in_local_tz
+        self.local_tz: str = local_tz
 
         if isinstance(input_time, TimeObj):
             self.dt = input_time.dt
@@ -73,7 +73,7 @@ class TimeObj:
         return str(self.dt)
 
     def __add__(self, other: "TimeDeltaObj") -> TimeObj:
-        return TimeObj(self.dt + other.dt)
+        return TimeObj(self.dt + other.dt, local_tz=self.local_tz)
 
     def __sub__(self, other: TimeObj) -> "TimeDeltaObj":
         return TimeDeltaObj(self.dt - other.dt)
@@ -93,22 +93,19 @@ class TimeObj:
     def __eq__(self, other: TimeObj) -> bool:
         return self.dt == other.dt
 
-    def set_local_timezone(self, in_tz: str):
-        self.local_tz = in_tz
-
     def get_start_day(self):
         return TimeObj(
             datetime.combine(self.dt.date(), datetime.min.time()),
-            in_local_tz=self.local_tz,
+            local_tz=self.local_tz,
         )
 
     def get_off(self, **kwargs: int):
-        return TimeObj(self.dt + timedelta(**kwargs), in_local_tz=self.local_tz)
+        return TimeObj(self.dt + timedelta(**kwargs), local_tz=self.local_tz)
 
     def get_off_center(self, **kwargs: int):
         time_d = timedelta(**kwargs) / 2
-        return TimeObj(self.dt - time_d, in_local_tz=self.local_tz), TimeObj(
-            self.dt + time_d, in_local_tz=self.local_tz
+        return TimeObj(self.dt - time_d, local_tz=self.local_tz), TimeObj(
+            self.dt + time_d, local_tz=self.local_tz
         )
 
     def get_datetime(self) -> datetime:
@@ -256,7 +253,8 @@ def get_off_list(
         return SkyfieldConstants.timescale.from_datetimes(dt_list)
 
     if final_type == 5:
-        return [TimeObj(x) for x in dt_list]
+        assert t_start.local_tz == t_end.local_tz, "Start and End should have the same local timezones!"
+        return [TimeObj(x, local_tz=t_start.local_tz) for x in dt_list]
 
     raise TypeError(
         "Please select a type 0 (numpy.datetime64), 1 (datetime), 2 (skyfield.timelib.Time), 3 (astropy.time.Time), 4 (pandas.DataFrame), or 5 (TimeObj)! "
