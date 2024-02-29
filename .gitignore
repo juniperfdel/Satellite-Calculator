@@ -7,3 +7,4 @@ skyfield_data/*
 .idea**
 config/*
 run_sat_search.py
+active.temp

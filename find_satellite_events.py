@@ -1,10 +1,8 @@
 import argparse
 import configparser
-from itertools import pairwise
 import json
 import os
-
-
+from itertools import pairwise
 from operator import attrgetter
 from pathlib import Path
 from typing import List
@@ -12,7 +10,8 @@ from typing import List
 from tqdm import tqdm
 
 from utils.arg_utils import add_common_params
-from utils.common import ObservatorySatelliteFactory, get_day_transits, make_bounded_time_list
+from utils.common import (ObservatorySatelliteFactory, get_day_transits,
+                          make_bounded_time_list)
 from utils.time_utils import TimeDeltaObj
 from utils.transit import DayTransits, SingleCulmination
 
@@ -97,7 +96,7 @@ def main(pargs: argparse.Namespace) -> None:
     print(f"Calculating culminations of {len(obs_sat_fact.active_sats)} satellites")
 
     day_step = TimeDeltaObj(days=1)
-    
+
     obs_sat_fact_bar = tqdm(obs_sat_fact, position=0)
 
     culmination_data = []
@@ -106,10 +105,10 @@ def main(pargs: argparse.Namespace) -> None:
         start_end_pairs = list(
             pairwise(make_bounded_time_list(start_utc, final_day, day_step))
         )
-        
+
         obs_sat_fact_bar.set_description(
             f"{sat_obs.sat_name};{sat_obs.obs_name};"
-            f"{start_utc.get_compact_fmt()}--{final_day.get_compact_fmt()};" 
+            f"{start_utc.get_compact_fmt()}--{final_day.get_compact_fmt()};"
             f"Ep@{sat_obs.sat_epoch_str}"
         )
 

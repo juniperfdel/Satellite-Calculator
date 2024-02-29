@@ -39,7 +39,7 @@ This file lists the names of the satellites to look for on each line.
 ### Python Version
 These scripts uses features from the `typing` module which was introduced in python 3.7, so that is the minimum recommended python version required to run these scripts. 
 ### Formatting
-All scripts have been formatted with [black](https://github.com/psf/black).
+All scripts have been formatted with [black](https://github.com/psf/black) and [isort](https://pycqa.github.io/isort/).
 
 ### Packages
 This repository contains a `pipfile` which is used by the dependency management system [pipenv](https://pipenv.pypa.io/en/latest/). Otherwise, here is a list of the packages needed to run these scripts
@@ -47,7 +47,6 @@ This repository contains a `pipfile` which is used by the dependency management 
 ```
 pyyaml
 tqdm
-pytz
 numpy
 geopy
 skyfield
@@ -55,6 +54,5 @@ tzlocal
 h5py
 pandas
 astropy
-dateparser
-h5py
+requests
 ```

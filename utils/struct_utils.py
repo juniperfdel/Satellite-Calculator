@@ -1,8 +1,5 @@
 from functools import wraps
-from typing import get_type_hints, Any, Callable, Union
-
-from cached_property import cached_property
-
+from typing import Any, Callable, Union, get_type_hints
 
 def format_fn(in_f):
     @wraps(in_f)
@@ -12,12 +9,6 @@ def format_fn(in_f):
 
     str_fn.__name__ = f"{in_f.__name__}_str"
     return str_fn
-
-
-def format_cached_property(in_property: cached_property) -> cached_property:
-    old_fn = in_property.func
-    new_fn = format_fn(old_fn)
-    return cached_property(new_fn)
 
 
 def format_property(in_property: property) -> property:
@@ -37,9 +28,7 @@ def does_return_float(in_attr, in_fn_attr=None) -> bool:
 
 
 def get_format_factory(in_attr: Any) -> Union[Callable, None]:
-    if isinstance(in_attr, cached_property) and does_return_float(in_attr, "func"):
-        return format_cached_property
-    elif isinstance(in_attr, property) and does_return_float(in_attr, "fget"):
+    if isinstance(in_attr, property) and does_return_float(in_attr, "fget"):
         return format_property
     elif callable(in_attr) and does_return_float(in_attr):
         return format_fn

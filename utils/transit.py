@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from typing import Any, Iterator, Union
-from utils.satellite import ObservatorySatellite, SatellitePosition
 
+from utils.satellite import ObservatorySatellite, SatellitePosition
 from utils.struct_utils import MetaFormatter
 from utils.time_utils import TimeObj
 

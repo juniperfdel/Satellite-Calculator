@@ -1,6 +1,4 @@
 import argparse
-import os
-from collections import deque
 from itertools import pairwise
 from pathlib import Path
 from typing import Callable, Optional
@@ -11,13 +9,10 @@ from numpy.typing import ArrayLike
 from tqdm import tqdm
 
 from utils.arg_utils import add_common_params
-from utils.common import (
-    ObservatorySatelliteFactory,
-    get_obs_coord_between,
-    make_bounded_time_list,
-)
+from utils.common import (ObservatorySatelliteFactory, get_obs_coord_between,
+                          make_bounded_time_list)
 from utils.math_utils import two_object_distance
-from utils.time_utils import TimeDeltaObj, TimeObj, get_off_list
+from utils.time_utils import TimeDeltaObj
 
 try:
     import h5py
@@ -208,13 +203,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--force-tle-limit",
         type=float,
-        help="Don't calculate past this amount of days from the TLE epoch",
+        help="Don't calculate past this amount of days from the model epoch",
     )
 
     parser.add_argument(
         "--chain",
         action="store_true",
-        help="In the specific case of one satellite having many sequential TLEs - chain them together",
+        help="In the specific case of one satellite having many sequential models - chain them together",
     )
 
     args = parser.parse_args()

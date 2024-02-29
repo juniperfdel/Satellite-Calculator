@@ -1,7 +1,5 @@
 import argparse
 
-from pathlib import Path
-
 
 def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
     parser.add_argument(
@@ -24,11 +22,11 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
         "-r",
         "--reload",
         action="store_true",
-        help="Re-download the TLE file from the internet",
+        help="Re-download the models file from the internet",
     )
 
     parser.add_argument(
-        "-ca", "--cache", action="store_true", help="Automatically Cache TLE files"
+        "-ca", "--cache", action="store_true", help="Automatically Cache model files with the format of %Y%m%d_sats.txt"
     )
 
     parser.add_argument(
@@ -54,7 +52,7 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
         "--tles",
         type=str,
         nargs="+",
-        help="Specify tle files to use instead of downloading them",
+        help="Specify the model files to use instead of downloading them; supports TLE, OMM CSV, and OMM XML formats",
     )
 
     parser.add_argument(

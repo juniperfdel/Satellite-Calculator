@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Optional, Any, Union, List
+from typing import Any, Union
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -253,7 +253,9 @@ def get_off_list(
         return SkyfieldConstants.timescale.from_datetimes(dt_list)
 
     if final_type == 5:
-        assert t_start.local_tz == t_end.local_tz, "Start and End should have the same local timezones!"
+        assert (
+            t_start.local_tz == t_end.local_tz
+        ), "Start and End should have the same local timezones!"
         return [TimeObj(x, local_tz=t_start.local_tz) for x in dt_list]
 
     raise TypeError(

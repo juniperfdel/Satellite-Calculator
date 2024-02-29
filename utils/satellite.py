@@ -8,11 +8,10 @@ from skyfield.almanac import dark_twilight_day, fraction_illuminated
 from skyfield.sgp4lib import EarthSatellite
 from skyfield.toposlib import GeographicPosition, iers2010
 
-
 from utils.math_utils import two_object_distance
-from utils.struct_utils import MetaFormatter
 from utils.observatory import Observatories
 from utils.skyfield_utils import SkyfieldConstants
+from utils.struct_utils import MetaFormatter
 from utils.time_utils import TimeObj
 
 
@@ -41,7 +40,7 @@ class ObservatorySatellite(metaclass=MetaFormatter):
 
     @property
     def sat_epoch_mjd(self) -> float:
-        return (self.sat.model.jdsatepoch - 2400000.5)
+        return self.sat.model.jdsatepoch - 2400000.5
 
     @property
     def sat_mean_motion(self) -> float:

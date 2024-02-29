@@ -1,24 +1,19 @@
-import json
-import shutil
-import time
 from collections import defaultdict, deque
 from datetime import datetime
 from itertools import chain
-from pathlib import Path
 from typing import Iterator, Optional, Sequence
 
 import numpy
 import pandas
-import requests
 import yaml
 from skyfield.sgp4lib import EarthSatellite
 from skyfield.timelib import Time as SkyfieldTime
 from skyfield.toposlib import iers2010
 from tzlocal import get_localzone
 
+from utils.datafile import make_locally_active_sats
 from utils.observatory import Observatories
 from utils.satellite import ObservatorySatellite
-from utils.skyfield_utils import SkyfieldConstants
 from utils.time_utils import TimeDeltaObj, TimeObj, get_off_list, today
 from utils.transit import DayTransits
 
@@ -135,7 +130,7 @@ class ObservatorySatelliteFactory:
         self.end_days: float = end_days
         self.end_utc: Optional[TimeObj] = None
         self.tles: list[str] = (
-            ["https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"]
+            ["https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=csv"]
             if tles is None
             else tles
         )
@@ -147,7 +142,9 @@ class ObservatorySatelliteFactory:
         self.active_sats: list[EarthSatellite] = []
         self.active_observatories: list[Observatories] = []
 
-        self._sat_list: Optional[(list[tuple[TimeObj, float, EarthSatellite]] | list[EarthSatellite])] = None
+        self._sat_list: Optional[
+            (list[tuple[TimeObj, float, EarthSatellite]] | list[EarthSatellite])
+        ] = None
 
         self._make_start_utc()
         self._make_active_sats()
@@ -167,129 +164,21 @@ class ObservatorySatelliteFactory:
     def _make_active_sats(self):
         local_active_sats = list(
             chain.from_iterable(
-                self._make_locally_active_sats(local_tle) for local_tle in self.tles
+                make_locally_active_sats(
+                    self.reload_sat,
+                    self.cache_sat,
+                    self.use_all,
+                    self.ignore_limit,
+                    self.start_utc,
+                    local_tle,
+                )
+                for local_tle in self.tles
             )
         )
         uniq_sats = {
             sat.name + "_" + str(sat.model.jdsatepoch): sat for sat in local_active_sats
         }
         self.active_sats = list(uniq_sats.values())
-
-    def _lookup_name_sat_id(self, sat_ids: list[str]) -> dict[str, str]:
-        itnames_path = Path(SkyfieldConstants.load.path_to("ids_to_names.txt"))
-        itnames: dict[str, str] = {}
-        if itnames_path.exists():
-            itnames: dict[str, str] = dict(
-                map(
-                    lambda x: x.split(","),
-                    itnames_path.read_text().splitlines(keepends=False),
-                )
-            )
-
-        rv: dict[str, str] = {}
-        for sat_id in sat_ids:
-            sat_id_str = str(sat_id)
-            if sat_id_str in itnames:
-                sat_name = itnames[sat_id_str]
-            else:
-                print(f"Performing lookup of Catalog number {sat_id}")
-                time.sleep(2.0)
-                sat_name = json.loads(
-                    requests.get(
-                        f"https://celestrak.org/satcat/records.php?CATNR={sat_id}"
-                    ).content.decode("ascii")
-                )[0]["OBJECT_NAME"]
-                print(f"Found as {sat_name}\n")
-                itnames[sat_id_str] = sat_name
-            rv[sat_id] = sat_name
-
-        itnames_path.write_text(
-            "\n".join(
-                f"{_sat_id},{_sat_name}" for _sat_id, _sat_name in itnames.items()
-            )
-        )
-        return rv
-
-    def _parse_hist_tle_file(self, in_file: str) -> list[EarthSatellite]:
-        tle_lines = list(
-            filter(
-                Path(SkyfieldConstants.load.path_to(in_file))
-                .read_text()
-                .splitlines(keepends=False)
-            )
-        )
-        tle_curs = 0
-        tle_len = len(tle_lines)
-        rv: list[EarthSatellite] = []
-        while tle_curs < tle_len:
-            sat_name = None
-            line_one = None
-            line_two = None
-            c_line = tle_lines[tle_curs]
-            if c_line[0] != "1":
-                sat_name = c_line
-                tle_curs += 1
-                c_line = tle_lines[tle_curs]
-            if c_line[0] == "1":
-                line_one = c_line
-                tle_curs += 1
-                c_line = tle_lines[tle_curs]
-            if c_line[0] == "2":
-                line_two = c_line
-                tle_curs += 1
-
-            if line_one is None or line_two is None:
-                raise ValueError(
-                    f"Unable to parse file as TLE file: {in_file} @ line {tle_curs}"
-                )
-
-            rv.append(EarthSatellite(line_one, line_two, name=sat_name))
-
-        return rv
-
-    def _make_locally_active_sats(self, sat_url: str = "") -> list[EarthSatellite]:
-        is_url = "https://" in sat_url
-
-        if self.reload_sat:
-            loaded_satellites = SkyfieldConstants.load.tle_file(sat_url, reload=True)
-        else:
-            loaded_satellites = SkyfieldConstants.load.tle_file(sat_url)
-
-        if (loaded_satellites is None) and (not is_url):
-            print(
-                f"Skyfield unable to load {sat_url}; attempting manual parsing as a TLE file"
-            )
-            loaded_satellites = self._parse_hist_tle_file(sat_url)
-
-        if self.cache_sat and is_url:
-            active_file = Path(SkyfieldConstants.load.path_to("active.txt"))
-            cache_loc = Path(
-                SkyfieldConstants.load.path_to(
-                    f"{self.today_utc.get_file_format()}_sats.txt"
-                )
-            )
-            shutil.copy(active_file, cache_loc)
-
-        lookup_sat_ids = [
-            sat.model.satnum for sat in loaded_satellites if sat.name is None
-        ]
-        sid_name = self._lookup_name_sat_id(lookup_sat_ids)
-        for sat in loaded_satellites:
-            if sat.name is None:
-                sat.name = sid_name[sat.model.satnum]
-
-        if not self.use_all:
-            with open("config/sat_list.txt", "r") as fp:
-                sat_names = [x.strip() for x in fp.readlines()]
-
-            return [
-                sat
-                for sat in loaded_satellites
-                if (self.ignore_limit or ((self.start_utc.sf - sat.epoch) < 14))
-                and any(sat_name in sat.name for sat_name in sat_names)
-            ]
-        else:
-            return loaded_satellites
 
     def _make_active_obs(self) -> None:
         with open("config/obs_data.yaml", "r") as fp:
@@ -326,14 +215,13 @@ class ObservatorySatelliteFactory:
         else:
             self._sat_list = self.active_sats
 
-
     def __len__(self) -> int:
         self._make_sat_list()
         return len(self._sat_list) * len(self.active_observatories)
 
     def __iter__(self) -> Iterator[tuple[TimeObj, float, ObservatorySatellite]]:
         self._make_sat_list()
-        
+
         if self.chain_tles:
             return chain.from_iterable(
                 (
