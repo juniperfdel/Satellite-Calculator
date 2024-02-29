@@ -121,10 +121,8 @@ def csv_xml_handler(active: Path, ext: FileGuess) -> list[EarthSatellite]:
 
 def handle_url(sat_url: str, reload_sat: bool) -> list[EarthSatellite]:
 
-    is_url = sat_url.startswith("http")
-    active = (
-        Path(SkyfieldConstants.load.path_to("active.txt")) if is_url else Path(sat_url)
-    )
+    is_url = sat_url.startswith("http") or sat_url.startswith("ftp")
+    active = Path(SkyfieldConstants.load.path_to("active.txt" if is_url else sat_url))
 
     if reload_sat and is_url:
         data = urlopen(sat_url)
@@ -132,11 +130,12 @@ def handle_url(sat_url: str, reload_sat: bool) -> list[EarthSatellite]:
 
     guess = guess_type(active)
 
-    return (
-        SkyfieldConstants.load.tle_file(active, reload=reload_sat)
-        if guess == FileGuess.tle
-        else csv_xml_handler(active, guess)
-    )
+    if guess == FileGuess.tle and is_url:
+        return SkyfieldConstants.load.tle_file(sat_url, filename="active.txt")
+    elif guess == FileGuess.tle:
+        return SkyfieldConstants.load.tle_file(str(active.absolute()))
+    else:
+        return csv_xml_handler(active, guess)
 
 
 def make_locally_active_sats(
