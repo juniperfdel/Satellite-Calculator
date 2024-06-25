@@ -84,7 +84,7 @@ class HDF5FileHandler:
 
 
 def make_coord_check(
-    in_radius, coord_1, coord_2, use_alt_az
+    in_radius: float, coord_1: float, coord_2: float, use_alt_az: bool
 ) -> Callable[[pandas.DataFrame], pandas.DataFrame]:
     df_ind = ("alt", "az") if bool(use_alt_az) else ("ra", "dec")
 
@@ -114,9 +114,12 @@ def main(pargs: argparse.Namespace) -> None:
     step_t = TimeDeltaObj(seconds=step_size)
     day_step = TimeDeltaObj(days=1)
 
-    if pargs.flag < 2:
+    if pargs.filter_radius:
         coord_checker = make_coord_check(
-            pargs.radius, pargs.coord1, pargs.coord2, bool(pargs.flag)
+            pargs.filter_radius[2],
+            pargs.filter_radius[0],
+            pargs.filter_radius[1],
+            bool(int(pargs.filter_radius[3])),
         )
     else:
         coord_checker = None
@@ -181,18 +184,19 @@ def main(pargs: argparse.Namespace) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="search the inputted satellites track for how close each will get to your input."
+        description="Calculate the inputted satellites position data"
     )
-
-    parser.add_argument("coord1", type=float, help="RA or Alt depending on <flag>")
-    parser.add_argument("coord2", type=float, help="Dec or Az depending on <flag>")
-    parser.add_argument("radius", type=float, help="The radius around the coordinate")
-    parser.add_argument("flag", type=int, help="0 = RA/Dec; 1 = Alt/Az; 2 = ignore")
 
     add_common_params(parser, "calculated_satellite_data")
 
     parser.add_argument(
-        "-i",
+        "--filter-radius",
+        type=float,
+        nargs=4,
+        help="Filter output to only include positions inside a radius around a sky position; Format: <RA/Alt> <Dec/Az> <Radius in Degrees> <0/1> where 0 = RA/Dec; 1 = Alt/Az",
+    )
+
+    parser.add_argument(
         "--ignore-empty",
         action="store_true",
         help="If the dataset is empty, it will not be written to the file",
