@@ -26,7 +26,7 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
     )
 
     parser.add_argument(
-        "-ca", "--cache", action="store_true", help="Automatically Cache model files with the format of %Y%m%d_sats.txt"
+        "-ca", "--cache", action="store_true", help="Automatically Cache model files with the format of %%Y%%m%%d_sats.txt"
     )
 
     parser.add_argument(
