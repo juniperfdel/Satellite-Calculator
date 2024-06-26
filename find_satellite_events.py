@@ -10,8 +10,11 @@ from typing import List
 from tqdm import tqdm
 
 from utils.arg_utils import add_common_params
-from utils.common import (ObservatorySatelliteFactory, get_day_transits,
-                          make_bounded_time_list)
+from utils.common import (
+    ObservatorySatelliteFactory,
+    get_day_transits,
+    make_bounded_time_list,
+)
 from utils.time_utils import TimeDeltaObj
 from utils.transit import DayTransits, SingleCulmination
 
@@ -89,9 +92,10 @@ def main(pargs: argparse.Namespace) -> None:
         cache_sat=pargs.cache,
         use_all=pargs.all,
         start_date=pargs.start_date,
-        end_days=pargs.days,
+        end_date_or_days=pargs.end,
         ignore_limit=pargs.ignore_limit,
         tles=pargs.tles,
+        chain_tles=pargs.chain,
     )
     print(f"Calculating culminations of {len(obs_sat_fact.active_sats)} satellites")
 

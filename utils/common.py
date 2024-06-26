@@ -118,7 +118,7 @@ class ObservatorySatelliteFactory:
         cache_sat: bool = False,
         use_all: bool = False,
         start_date: Optional[str] = "today",
-        end_days: float = 120,
+        end_date_or_days: str = "120",
         ignore_limit: bool = False,
         tles: Optional[list[str]] = None,
         chain_tles: bool = False,
@@ -127,7 +127,8 @@ class ObservatorySatelliteFactory:
         self.local_tz: str = get_localzone().zone if local_tz == "local" else local_tz
         self.today_utc: TimeObj = today()
         self.start_utc: Optional[TimeObj] = None
-        self.end_days: float = end_days
+        self.end_date_or_days: str = end_date_or_days
+        self.end_days: int = -1
         self.end_utc: Optional[TimeObj] = None
         self.tles: list[str] = (
             ["https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=csv"]
@@ -139,7 +140,7 @@ class ObservatorySatelliteFactory:
         self.use_all: bool = use_all
         self.ignore_limit: bool = ignore_limit
         self.chain_tles: bool = chain_tles
-        self.active_sats: list[EarthSatellite] = []
+        self.active_sats: deque[EarthSatellite] = []
         self.active_observatories: list[Observatories] = []
 
         self._sat_list: Optional[
@@ -147,22 +148,32 @@ class ObservatorySatelliteFactory:
         ] = None
 
         self._make_start_utc()
+        self._make_end_utc()
         self._make_active_sats()
         self._make_active_obs()
 
     def _make_start_utc(self):
         try:
             self.start_utc = TimeObj(
-                datetime.strptime(self.start_date, "%Y-%m-%d")
+                datetime.strptime(self.start_date, "%Y-%m-%d"), self.local_tz
             ).get_start_day()
         except ValueError:
             self.start_utc = self.today_utc.get_start_day()
 
         self.start_utc.local_tz = self.local_tz
-        self.end_utc = self.start_utc + TimeDeltaObj(days=self.end_days)
+
+    def _make_end_utc(self):
+        try:
+            self.end_days = int(self.end_date_or_days)
+            self.end_utc = self.start_utc + TimeDeltaObj(days=self.end_days)
+        except ValueError:
+            self.end_utc = TimeObj(
+                datetime.strptime(self.end_date_or_days, "%Y-%m-%d"), self.local_tz
+            ).get_start_day()
+            self.end_days = int((self.end_utc - self.start_utc).total_days())
 
     def _make_active_sats(self):
-        local_active_sats = list(
+        local_active_sats = deque(
             chain.from_iterable(
                 make_locally_active_sats(
                     self.reload_sat,
@@ -178,7 +189,7 @@ class ObservatorySatelliteFactory:
         uniq_sats = {
             sat.name + "_" + str(sat.model.jdsatepoch): sat for sat in local_active_sats
         }
-        self.active_sats = list(uniq_sats.values())
+        self.active_sats = deque(uniq_sats.values())
 
     def _make_active_obs(self) -> None:
         with open("config/obs_data.yaml", "r") as fp:
@@ -200,12 +211,41 @@ class ObservatorySatelliteFactory:
             for sat in self.active_sats:
                 organized_sats[sat.name].append(sat)
 
-            chained_sats: list[tuple[TimeObj, float, EarthSatellite]] = []
+            chained_sats: deque[tuple[TimeObj, float, EarthSatellite]] = deque()
             for sat_list in organized_sats.values():
-                sat_list = sorted(sat_list, key=lambda x: x.model.jdsatepoch)
+                sat_list: list[EarthSatellite] = sorted(
+                    sat_list, key=lambda x: x.model.jdsatepoch
+                )
 
-                start_dates = [TimeObj(x.epoch, self.local_tz) for x in sat_list]
-                start_dates = [x for x in start_dates if x < self.end_utc]
+                start_sat: EarthSatellite | None = None
+                for sat_ind, sat in enumerate(sat_list):
+                    sat_epoch_time = TimeObj(sat.epoch, self.local_tz)
+                    if self.start_utc < sat_epoch_time:
+                        if sat_ind > 0:
+                            prev_sat = sat_list[sat_ind - 1]
+                            prev_sat_ep = TimeObj(prev_sat.epoch, self.local_tz)
+                            if abs((self.start_utc - prev_sat_ep).total_days()) < abs(
+                                (self.start_utc - sat_epoch_time).total_days()
+                            ):
+                                start_sat = prev_sat
+                            else:
+                                start_sat = sat
+                        else:
+                            start_sat = sat
+                        break
+
+                sat_list: deque[EarthSatellite] = deque(
+                    x
+                    for x in sat_list
+                    if self.start_utc < TimeObj(x.epoch, self.local_tz) < self.end_utc
+                )
+                start_dates: deque[TimeObj] = deque(
+                    TimeObj(x.epoch, self.local_tz) for x in sat_list
+                )
+
+                sat_list.appendleft(start_sat)
+                start_dates.appendleft(self.start_utc)
+
                 dates_diff = numpy.diff(
                     numpy.array([x.get_mjd() for x in start_dates])
                 ).tolist()

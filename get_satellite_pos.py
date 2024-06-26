@@ -9,8 +9,11 @@ from numpy.typing import ArrayLike
 from tqdm import tqdm
 
 from utils.arg_utils import add_common_params
-from utils.common import (ObservatorySatelliteFactory, get_obs_coord_between,
-                          make_bounded_time_list)
+from utils.common import (
+    ObservatorySatelliteFactory,
+    get_obs_coord_between,
+    make_bounded_time_list,
+)
 from utils.math_utils import two_object_distance
 from utils.time_utils import TimeDeltaObj
 
@@ -104,7 +107,7 @@ def main(pargs: argparse.Namespace) -> None:
         cache_sat=pargs.cache,
         use_all=pargs.all,
         start_date=pargs.start_date,
-        end_days=pargs.days,
+        end_date_or_days=pargs.end,
         ignore_limit=pargs.ignore_limit,
         tles=pargs.tles,
         chain_tles=pargs.chain,
@@ -140,12 +143,12 @@ def main(pargs: argparse.Namespace) -> None:
         file_handler.add_group(obs_sat_obj.obs_name)
         file_handler.add_group(obs_sat_obj.sat_name)
         if coord_checker is not None:
-            file_handler.add_group(str(numpy.around(pargs.search[2], 3)))
+            file_handler.add_group(str(numpy.around(pargs.filter_radius[2], 3)))
 
         user_out = (
             ""
             if coord_checker is None
-            else f"{(pargs.search[0], pargs.search[1])};{args.search[2]};"
+            else f"{(pargs.filter_radius[0], pargs.filter_radius[1])};{args.filter_radius[2]};"
         )
         obs_sat_fact_bar.set_description(
             f"{obs_sat_obj.sat_name};{obs_sat_obj.obs_name};"
@@ -208,12 +211,6 @@ if __name__ == "__main__":
         "--force-tle-limit",
         type=float,
         help="Don't calculate past this amount of days from the model epoch",
-    )
-
-    parser.add_argument(
-        "--chain",
-        action="store_true",
-        help="In the specific case of one satellite having many sequential models - chain them together",
     )
 
     args = parser.parse_args()

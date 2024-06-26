@@ -3,11 +3,11 @@ import argparse
 
 def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
     parser.add_argument(
-        "days",
-        type=int,
+        "end",
+        type=str,
         nargs="?",
-        default=120,
-        help="The number of days to calculate for, default of 120 days",
+        default="120",
+        help="If a number: represents the number of days after the start date to calculate for, otherwise attempt to interpert as a date with format %%Y-%%m-%%d; default of 120 days",
     )
 
     parser.add_argument(
@@ -26,11 +26,17 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
     )
 
     parser.add_argument(
-        "-ca", "--cache", action="store_true", help="Automatically Cache model files with the format of %%Y%%m%%d_sats.txt"
+        "-ca",
+        "--cache",
+        action="store_true",
+        help="Automatically Cache model files with the format of %%Y%%m%%d_sats.txt",
     )
 
     parser.add_argument(
-        "-l", "--all", action="store_true", help="Use all satellites from database"
+        "-l",
+        "--all",
+        action="store_true",
+        help="Use all satellites from database; recommended to use if --tles is also used",
     )
 
     parser.add_argument(
@@ -38,7 +44,7 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
         "--start-date",
         type=str,
         default="today",
-        help="specify a starting date to begin calculations format is <year>-<month>-<day>",
+        help="specify a starting date to begin calculations; format is %%Y-%%m-%%d",
     )
 
     parser.add_argument(
@@ -53,6 +59,12 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
         type=str,
         nargs="+",
         help="Specify the model files to use instead of downloading them; supports TLE, OMM CSV, and OMM XML formats",
+    )
+
+    parser.add_argument(
+        "--chain",
+        action="store_true",
+        help="When the inputted OMM or TLE file has many models in sequence for various satellites - chain them together",
     )
 
     parser.add_argument(
