@@ -128,7 +128,7 @@ class ObservatorySatelliteFactory:
         self.today_utc: TimeObj = today()
         self.start_utc: Optional[TimeObj] = None
         self.end_date_or_days: str = end_date_or_days
-        self.end_days: int = -1
+        self.end_days: float = -1
         self.end_utc: Optional[TimeObj] = None
         self.tles: list[str] = (
             ["https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=csv"]
@@ -164,13 +164,13 @@ class ObservatorySatelliteFactory:
 
     def _make_end_utc(self):
         try:
-            self.end_days = int(self.end_date_or_days)
+            self.end_days = float(self.end_date_or_days)
             self.end_utc = self.start_utc + TimeDeltaObj(days=self.end_days)
         except ValueError:
             self.end_utc = TimeObj(
                 datetime.strptime(self.end_date_or_days, "%Y-%m-%d"), self.local_tz
             ).get_start_day()
-            self.end_days = int((self.end_utc - self.start_utc).total_days())
+            self.end_days = (self.end_utc - self.start_utc).total_days()
 
     def _make_active_sats(self):
         local_active_sats = deque(

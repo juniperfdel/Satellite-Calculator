@@ -28,64 +28,6 @@ except ImportError as err:
 output_path = Path("output") / "sat_pos"
 
 
-class HDF5FileNotSetup(IOError):
-    pass
-
-
-class HDF5FileHandler:
-    def __init__(self):
-        self.file_cache: dict[str, h5py.File] = {}
-        self.cur_file: str = ""
-        self.cur_group: Optional[h5py.Group] = None
-        self.is_working: bool = False
-
-    def open_file(self, file_name: str):
-        self.is_working = True
-        self.cur_file = file_name
-        self.cur_group = None
-        if file_name in self.file_cache and self.file_cache[file_name]:
-            return
-        else:
-            fpath = Path(file_name)
-            if fpath.exists():
-                fpath.unlink()
-            self.file_cache[file_name] = h5py.File(file_name, mode="a")
-
-    def add_group(self, group_name: str):
-        if not self.is_working:
-            raise HDF5FileNotSetup
-        if self.cur_group is None:
-            self.cur_group = self.file_cache[self.cur_file].require_group(group_name)
-        else:
-            self.cur_group = self.cur_group.require_group(group_name)
-
-    def add_dataset(self, dataset_name: str, data_input: ArrayLike, **iattrs):
-        if not self.is_working:
-            raise HDF5FileNotSetup
-        if self.cur_group is None:
-            new_ds: h5py.Dataset = self.file_cache[self.cur_file].create_dataset(
-                dataset_name, data=data_input
-            )
-        else:
-            new_ds: h5py.Dataset = self.cur_group.create_dataset(
-                dataset_name, data=data_input
-            )
-        for k, v in iattrs.items():
-            new_ds.attrs[k] = v
-
-    def finish_all(self):
-        for file_name in self.file_cache.keys():
-            if self.file_cache[file_name]:
-                self.file_cache[file_name].close()
-
-    def close_working_file(self):
-        if self.is_working:
-            self.file_cache[self.cur_file].close()
-        self.cur_file = ""
-        self.cur_group = None
-        self.is_working = False
-
-
 def make_coord_check(
     in_radius: float, coord_1: float, coord_2: float, use_alt_az: bool
 ) -> Callable[[pandas.DataFrame], pandas.DataFrame]:
@@ -117,6 +59,8 @@ def main(pargs: argparse.Namespace) -> None:
     step_t = TimeDeltaObj(seconds=step_size)
     day_step = TimeDeltaObj(days=1)
 
+    coord_group_name = ""
+    user_out = ""
     if pargs.filter_radius:
         coord_checker = make_coord_check(
             pargs.filter_radius[2],
@@ -124,12 +68,16 @@ def main(pargs: argparse.Namespace) -> None:
             pargs.filter_radius[1],
             bool(int(pargs.filter_radius[3])),
         )
+        ns = lambda x: numpy.around(pargs.filter_radius[x], 3)
+        coord_group_name = f"/c1_{ns(1)}_c2_{ns(1)}_r_{ns(2)}".replace(".", "")
+        user_out = f"{(pargs.filter_radius[0], pargs.filter_radius[1])};{args.filter_radius[2]};"
     else:
         coord_checker = None
 
-    file_handler = HDF5FileHandler()
-
     obs_sat_fact_bar = tqdm(obs_sat_fact, position=0)
+
+    file_name = str(output_path / f"{pargs.output_file}.hdf5")
+    hdf5_file = h5py.File(file_name, mode="a")
 
     for start_utc, days_to_calc, obs_sat_obj in obs_sat_fact_bar:
         final_day = start_utc + TimeDeltaObj(days=days_to_calc)
@@ -137,30 +85,26 @@ def main(pargs: argparse.Namespace) -> None:
             pairwise(make_bounded_time_list(start_utc, final_day, day_step))
         )
 
-        out_file = str(output_path / f"{pargs.output_file}.hdf5")
-        file_handler.open_file(out_file)
-        file_handler.add_group(obs_sat_obj.sat_epoch_obj.iso_format())
-        file_handler.add_group(obs_sat_obj.obs_name)
-        file_handler.add_group(obs_sat_obj.sat_name)
-        if coord_checker is not None:
-            file_handler.add_group(str(numpy.around(pargs.filter_radius[2], 3)))
+        if pargs.chain:
+            cur_group: h5py.Group = hdf5_file.require_group(
+                f"{coord_group_name}/{obs_sat_obj.obs_name}/{obs_sat_obj.sat_name}"
+            )
+        else:
+            cur_group: h5py.Group = hdf5_file.require_group(
+                f"{coord_group_name}/{obs_sat_obj.obs_name}/{obs_sat_obj.sat_name}/{obs_sat_obj.sat_epoch_obj.iso_format()}"
+            )
 
-        user_out = (
-            ""
-            if coord_checker is None
-            else f"{(pargs.filter_radius[0], pargs.filter_radius[1])};{args.filter_radius[2]};"
-        )
         obs_sat_fact_bar.set_description(
             f"{obs_sat_obj.sat_name};{obs_sat_obj.obs_name};"
             f"{start_utc.get_compact_fmt()}--{final_day.get_compact_fmt()};"
-            + user_out
-            + f"Ep@{obs_sat_obj.compact_sat_epoch_str}"
+            f"{user_out}"
+            f"Ep@{obs_sat_obj.compact_sat_epoch_str}"
         )
 
         for start_t, end_t in tqdm(start_end_pairs, position=1, leave=False):
             days_since_epoch = (start_t - obs_sat_obj.sat_epoch_obj).total_days()
 
-            if (pargs.force_tle_limit is not None) and (
+            if pargs.force_tle_limit and (
                 (days_since_epoch < 0) or (pargs.force_tle_limit < days_since_epoch)
             ):
                 continue
@@ -174,15 +118,18 @@ def main(pargs: argparse.Namespace) -> None:
             if pargs.ignore_empty and (0 in pd_sat_data.shape):
                 continue
 
-            dataset_name = start_t.iso_format()
-            file_handler.add_dataset(
-                dataset_name,
-                pd_sat_data.to_numpy(),
-                column_names=numpy.array(pd_sat_data.columns, dtype="S"),
-                step_size_sec=step_size,
+            new_ds: h5py.Dataset = cur_group.create_dataset(
+                start_t.iso_format(), data=pd_sat_data.to_numpy()
             )
 
-    file_handler.finish_all()
+            new_ds.attrs["column_names"] = (
+                numpy.array(pd_sat_data.columns, dtype="S"),
+            )
+            new_ds.attrs["step_size_sec"] = step_size
+            if pargs.chain:
+                new_ds.attrs["epoch"] = obs_sat_obj.sat_epoch_obj.iso_format()
+
+    hdf5_file.close()
 
 
 if __name__ == "__main__":
