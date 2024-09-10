@@ -14,7 +14,7 @@ from tzlocal import get_localzone
 from utils.datafile import make_locally_active_sats
 from utils.observatory import Observatories
 from utils.satellite import ObservatorySatellite
-from utils.time_utils import TimeDeltaObj, TimeObj, get_off_list, today
+from utils.time_utils import TimeDeltaObj, TimeObj, OffListTypes, get_off_list, today
 from utils.transit import DayTransits
 
 
@@ -26,7 +26,7 @@ def make_bounded_time_list(
     time_list = deque(
         [
             x
-            for x in get_off_list(start, end, step_size, 5)
+            for x in get_off_list(start, end, step_size, OffListTypes.TimeObjTL)
             if ((start < x) and (x < end))
         ]
     )
@@ -50,22 +50,27 @@ def get_obs_coord_between(
     end_time: TimeObj,
     time_step: TimeDeltaObj,
 ) -> pandas.DataFrame:
-    sf_list: SkyfieldTime = get_off_list(start_time, end_time, time_step, 2)
-    toc_list = in_obs_sat.diff.at(sf_list)
+    sf_list: SkyfieldTime = get_off_list(start_time, end_time, time_step, OffListTypes.SkyfieldTL)
+
+    sat_locs = in_obs_sat.sat.at(sf_list)
+    obs_locs = in_obs_sat.obs.at(sf_list)
+
+    toc_list =  sat_locs - obs_locs
+
     ra, dec, _ = toc_list.radec()
     rv_df = {
         "mjd": sf_list.to_astropy().to_value("mjd"),
         "ra": ra._degrees,
-        "dec": dec._degrees,
+        "dec": dec.degrees,
     }
 
     alt, az, _ = toc_list.altaz()
-    rv_df["alt"] = alt._degrees
-    rv_df["az"] = az._degrees
+    rv_df["alt"] = alt.degrees
+    rv_df["az"] = az.degrees
 
-    subpts = iers2010.subpoint(in_obs_sat.sat.at(sf_list))
-    rv_df["sub_lat"] = subpts.latitude._degrees
-    rv_df["sub_long"] = subpts.longitude._degrees
+    subpts = iers2010.subpoint_of(sat_locs)
+    rv_df["sub_lat"] = subpts.latitude.degrees
+    rv_df["sub_long"] = subpts.longitude.degrees
 
     return pandas.DataFrame(data=rv_df)
 
@@ -81,7 +86,7 @@ def find_sat_events(
     )
 
     events_zipped = list(zip(event_times, event_flags))
-    rv_transits = []
+    rv_transits: list[DayTransits] = []
     for time, flag in events_zipped:
         if flag == 0:
             new_transit = DayTransits(in_obs_sat, limit_alt)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from enum import auto, Enum
 from typing import Any, Union
 from zoneinfo import ZoneInfo
 
@@ -197,9 +198,16 @@ class TimeDeltaObj:
     def get_pandas(self) -> PandasTimeDelta:
         return self.pd
 
+class OffListTypes(Enum):
+    NumpyTL = auto()
+    PythonTL = auto()
+    SkyfieldTL = auto()
+    AstropyTL = auto()
+    PandasTL = auto()
+    TimeObjTL = auto()
 
 def get_off_list(
-    t_start: TimeObj, t_end: TimeObj, t_step: TimeDeltaObj, final_type: int = 0
+    t_start: TimeObj, t_end: TimeObj, t_step: TimeDeltaObj, final_type: OffListTypes = OffListTypes.NumpyTL
 ) -> Union[
     AstropyTimeSeries,
     ArrayLike,
@@ -211,18 +219,6 @@ def get_off_list(
     """
     Create a list of times for use by different astronomical packages
 
-    numpy array of dtype=numpy.datetime64 if final_type=0
-
-    python list of UTC datetimes if final_type=1
-
-    skyfield Time object if final_type=2
-
-    astropy Time object if final_type=3
-
-    pandas DataFrame if final_type=4
-
-    TimeObj if final_type=5
-
     Parameters
     ----------
     t_start
@@ -233,26 +229,26 @@ def get_off_list(
     Returns
     -------
     """
-    if final_type in {3, 4}:
+    if final_type == OffListTypes.AstropyTL or final_type == OffListTypes.PandasTL:
         ap_step = t_step.get_astropy()
         n_steps = (t_end.np - t_start.np) // t_step.np + 1
         ap_ts = AstropyTimeSeries(
             time_start=t_start.ap, time_delta=ap_step, n_samples=n_steps
         )
-        return ap_ts if final_type == 3 else ap_ts.to_pandas()
+        return ap_ts if final_type == OffListTypes.AstropyTL else ap_ts.to_pandas()
 
     num_list = np.arange(t_start.np, t_end.np + t_step.np, t_step.np)
-    if final_type == 0:
+    if final_type == OffListTypes.NumpyTL:
         return num_list
 
     dt_list = [timezone_converter(t) for t in num_list.astype(datetime)]
-    if final_type == 1:
+    if final_type == OffListTypes.PythonTL:
         return dt_list
 
-    if final_type == 2:
+    if final_type == OffListTypes.SkyfieldTL:
         return SkyfieldConstants.timescale.from_datetimes(dt_list)
 
-    if final_type == 5:
+    if final_type == OffListTypes.TimeObjTL:
         assert (
             t_start.local_tz == t_end.local_tz
         ), "Start and End should have the same local timezones!"

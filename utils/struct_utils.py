@@ -34,17 +34,20 @@ def get_format_factory(in_attr: Any) -> Union[Callable, None]:
         return format_fn
     return None
 
-
+_meta_formatter_cache: dict[str, dict[str, Callable]] = {}
 class MetaFormatter(type):
     def __new__(cls, name, bases, attrs):
-        new_fns = {}
-        for attr_key, attr in attrs.items():
-            if attr_key.startswith("__"):
-                continue
+        
+        new_fns: dict[str, Callable] = _meta_formatter_cache.get(name, dict())
+        if not new_fns:
+            for attr_key, attr in attrs.items():
+                if attr_key.startswith("__"):
+                    continue
 
-            format_factory = get_format_factory(attr)
-            if format_factory is not None:
-                new_fns[f"{attr_key}_str"] = format_factory(attr)
-
+                format_factory = get_format_factory(attr)
+                if format_factory is not None:
+                    new_fns[f"{attr_key}_str"] = format_factory(attr)
+            _meta_formatter_cache[name] = new_fns
+        
         attrs.update(new_fns)
         return super(MetaFormatter, cls).__new__(cls, name, bases, attrs)

@@ -49,6 +49,11 @@
     "sec_since_midnight_str"
   ],
   [
+    "Culmination Time (MJD)",
+    "culmination",
+    "mjd_str"
+  ],
+  [
     "Daytime at Culmination?",
     "culmination",
     "is_daytime_str"
@@ -119,6 +124,11 @@
     "sec_since_midnight_str"
   ],
   [
+    "Rise Time (MJD)",
+    "start",
+    "mjd_str"
+  ],
+  [
     "Daytime at Rise?",
     "start",
     "is_daytime_str"
@@ -187,6 +197,11 @@
     "Set Time (Seconds)",
     "end",
     "sec_since_midnight_str"
+  ],
+  [
+    "Set Time (MJD)",
+    "end",
+    "mjd_str"
   ],
   [
     "Daytime at Set?",

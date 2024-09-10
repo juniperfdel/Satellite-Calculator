@@ -44,7 +44,7 @@ def add_common_params(parser: argparse.ArgumentParser, default_outfile: str):
         "--start-date",
         type=str,
         default="today",
-        help="specify a starting date to begin calculations; format is %%Y-%%m-%%d",
+        help="specify a starting date to begin calculations; if it is 'today' than use the current date (default), otherwise attempt to interpert as a date with format of %%Y-%%m-%%d",
     )
 
     parser.add_argument(

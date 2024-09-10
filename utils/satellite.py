@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Tuple, Union
+from typing import Any, Tuple, Union
 
 from geopy import distance
 from skyfield.almanac import dark_twilight_day, fraction_illuminated
 from skyfield.sgp4lib import EarthSatellite
 from skyfield.toposlib import GeographicPosition, iers2010
+from skyfield.vectorlib import VectorSum
 
 from utils.math_utils import two_object_distance
 from utils.observatory import Observatories
@@ -17,11 +18,12 @@ from utils.time_utils import TimeObj
 
 class ObservatorySatellite(metaclass=MetaFormatter):
     def __init__(self, in_observatory: Observatories, satellite_: EarthSatellite):
-        self.observatory = in_observatory
-        self.sat = satellite_
-        self.diff = self.sat - self.observatory.sf
-        self.sat_name = self.sat.name
-        self.obs_name = self.observatory.name
+        self.observatory: Observatories = in_observatory
+        self.sat: EarthSatellite = satellite_
+        self.obs: GeographicPosition = in_observatory.sf
+        self.diff: VectorSum = self.sat - self.observatory.sf
+        self.sat_name: str = self.sat.name
+        self.obs_name: str = self.observatory.name
 
     def at(self, in_time: TimeObj):
         return SatellitePosition(self, in_time)
@@ -74,6 +76,10 @@ class SatellitePosition(metaclass=MetaFormatter):
     @property
     def utc_str(self) -> str:
         return self.time.utc_formatted_str()
+
+    @property
+    def mjd_str(self) -> str:
+        return str(self.time.get_mjd())
 
     @property
     def sec_since_midnight(self) -> float:
