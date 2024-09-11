@@ -6,6 +6,8 @@ from typing import Iterator, Optional, Sequence
 import numpy
 import pandas
 import yaml
+
+from astropy.timeseries import TimeSeries as AstropyTimeSeries
 from skyfield.sgp4lib import EarthSatellite
 from skyfield.timelib import Time as SkyfieldTime
 from skyfield.toposlib import iers2010
@@ -50,16 +52,21 @@ def get_obs_coord_between(
     end_time: TimeObj,
     time_step: TimeDeltaObj,
 ) -> pandas.DataFrame:
-    sf_list: SkyfieldTime = get_off_list(start_time, end_time, time_step, OffListTypes.SkyfieldTL)
+    sf_list: SkyfieldTime = get_off_list(
+        start_time, end_time, time_step, OffListTypes.SkyfieldTL
+    )
+    ap_list: AstropyTimeSeries = get_off_list(
+        start_time, end_time, time_step, OffListTypes.AstropyTL
+    )
 
     sat_locs = in_obs_sat.sat.at(sf_list)
     obs_locs = in_obs_sat.obs.at(sf_list)
 
-    toc_list =  sat_locs - obs_locs
+    toc_list = sat_locs - obs_locs
 
     ra, dec, _ = toc_list.radec()
     rv_df = {
-        "mjd": sf_list.to_astropy().to_value("mjd"),
+        "mjd": ap_list.time.mjd,
         "ra": ra._degrees,
         "dec": dec.degrees,
     }

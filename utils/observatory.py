@@ -12,7 +12,9 @@ class Observatories:
         self.lat = lat
         self.long = long
         self.alt = alt
-        self.sf: GeographicPosition = iers2010.latlon(self.lat, self.long, elevation_m=float(self.alt))
+        self.sf: GeographicPosition = iers2010.latlon(
+            self.lat, self.long, elevation_m=float(self.alt)
+        )
         self.sf_vector_sum: VectorSum = SkyfieldConstants.earth + self.sf
         self.lat_long = (self.lat, self.long)
         self.values = [self.lat, self.long, self.alt]

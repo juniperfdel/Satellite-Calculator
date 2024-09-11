@@ -1,6 +1,7 @@
 from functools import wraps
 from typing import Any, Callable, Union, get_type_hints
 
+
 def format_fn(in_f):
     @wraps(in_f)
     def str_fn(*args, **kwargs):
@@ -34,10 +35,13 @@ def get_format_factory(in_attr: Any) -> Union[Callable, None]:
         return format_fn
     return None
 
+
 _meta_formatter_cache: dict[str, dict[str, Callable]] = {}
+
+
 class MetaFormatter(type):
     def __new__(cls, name, bases, attrs):
-        
+
         new_fns: dict[str, Callable] = _meta_formatter_cache.get(name, dict())
         if not new_fns:
             for attr_key, attr in attrs.items():
@@ -48,6 +52,6 @@ class MetaFormatter(type):
                 if format_factory is not None:
                     new_fns[f"{attr_key}_str"] = format_factory(attr)
             _meta_formatter_cache[name] = new_fns
-        
+
         attrs.update(new_fns)
         return super(MetaFormatter, cls).__new__(cls, name, bases, attrs)

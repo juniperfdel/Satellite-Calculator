@@ -36,7 +36,6 @@ def main(ifmt: str = "tle"):
         )
         active.write_bytes(data.read())
 
-
     ext = guess_type(active)
 
     sats = []

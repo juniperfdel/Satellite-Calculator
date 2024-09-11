@@ -198,6 +198,7 @@ class TimeDeltaObj:
     def get_pandas(self) -> PandasTimeDelta:
         return self.pd
 
+
 class OffListTypes(Enum):
     NumpyTL = auto()
     PythonTL = auto()
@@ -206,8 +207,12 @@ class OffListTypes(Enum):
     PandasTL = auto()
     TimeObjTL = auto()
 
+
 def get_off_list(
-    t_start: TimeObj, t_end: TimeObj, t_step: TimeDeltaObj, final_type: OffListTypes = OffListTypes.NumpyTL
+    t_start: TimeObj,
+    t_end: TimeObj,
+    t_step: TimeDeltaObj,
+    final_type: OffListTypes = OffListTypes.NumpyTL,
 ) -> Union[
     AstropyTimeSeries,
     ArrayLike,
